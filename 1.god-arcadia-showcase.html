@@ -1,0 +1,1983 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GOD ARCADIA | Celestial Chronicle</title>
+    <style>
+      :root {
+        --ink-0: #03060c;
+        --ink-1: #0a1220;
+        --ink-2: #13263a;
+        --paper: #f6f0e5;
+        --muted: #c7c0b0;
+        --line: rgba(255, 255, 255, 0.22);
+        --line-soft: rgba(255, 255, 255, 0.1);
+        --gold: #d4b074;
+        --ice: #86d6ff;
+        --rose: #ff8d77;
+        --shadow: 0 32px 70px rgba(0, 0, 0, 0.45);
+        --radius: 22px;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+      }
+
+      body {
+        font-family: "Avenir Next", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+        color: var(--paper);
+        background:
+          radial-gradient(circle at 10% 10%, rgba(134, 214, 255, 0.16), transparent 42%),
+          radial-gradient(circle at 85% -10%, rgba(212, 176, 116, 0.18), transparent 46%),
+          linear-gradient(150deg, var(--ink-0) 0%, var(--ink-1) 42%, #05131f 100%);
+        overflow-x: hidden;
+      }
+
+      body.modal-open {
+        overflow: hidden;
+      }
+
+      h1,
+      h2,
+      h3,
+      .logo,
+      .eyebrow,
+      .filter-btn,
+      .badge,
+      .hero-number {
+        font-family: "Hiragino Mincho ProN", "Yu Mincho", "BIZ UDPMincho", serif;
+        letter-spacing: 0.06em;
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .noise {
+        position: fixed;
+        inset: 0;
+        pointer-events: none;
+        background-image: radial-gradient(rgba(255, 255, 255, 0.1) 0.6px, transparent 0.6px);
+        background-size: 2px 2px;
+        opacity: 0.08;
+        mix-blend-mode: soft-light;
+        z-index: 1;
+      }
+
+      #stardust {
+        position: fixed;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .site-wrap {
+        position: relative;
+        z-index: 2;
+      }
+
+      .topbar {
+        position: sticky;
+        top: 0;
+        z-index: 90;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 16px clamp(18px, 4vw, 48px);
+        border-bottom: 1px solid transparent;
+        transition: background 0.35s ease, border-color 0.35s ease, backdrop-filter 0.35s ease;
+      }
+
+      body.scrolled .topbar {
+        background: rgba(4, 10, 18, 0.68);
+        border-color: var(--line-soft);
+        backdrop-filter: blur(12px);
+      }
+
+      .logo {
+        font-size: clamp(1.05rem, 1.5vw, 1.35rem);
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .topbar nav {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      .topbar nav a {
+        font-size: 0.85rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        transition: color 0.25s ease;
+      }
+
+      .topbar nav a:hover {
+        color: var(--paper);
+      }
+
+      .hero {
+        position: relative;
+        padding: clamp(34px, 6vw, 72px) clamp(18px, 4vw, 48px) clamp(46px, 8vw, 86px);
+      }
+
+      .hero-shell {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: clamp(18px, 3vw, 34px);
+        align-items: center;
+      }
+
+      .hero-copy {
+        position: relative;
+        z-index: 2;
+      }
+
+      .eyebrow {
+        margin: 0;
+        font-size: 0.78rem;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--gold);
+      }
+
+      .hero h1 {
+        margin: 10px 0 14px;
+        font-size: clamp(2.2rem, 6.4vw, 5.2rem);
+        line-height: 1.04;
+      }
+
+      .hero-lead {
+        margin: 0 0 24px;
+        max-width: 58ch;
+        color: #ddd4c2;
+        line-height: 1.9;
+      }
+
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .cta {
+        padding: 12px 18px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 0.73rem;
+        transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+      }
+
+      .cta.primary {
+        background: linear-gradient(120deg, rgba(134, 214, 255, 0.2), rgba(212, 176, 116, 0.28));
+      }
+
+      .cta.play {
+        background: linear-gradient(120deg, rgba(212, 176, 116, 0.4), rgba(134, 214, 255, 0.32));
+        border-color: rgba(212, 176, 116, 0.62);
+        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.36);
+      }
+
+      .cta:hover {
+        transform: translateY(-2px);
+        border-color: rgba(255, 255, 255, 0.5);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+      }
+
+      .hero-metrics {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 22px;
+      }
+
+      .metric {
+        padding: 14px 12px;
+        border-radius: 14px;
+        border: 1px solid var(--line-soft);
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .hero-number {
+        display: block;
+        font-size: 1.3rem;
+        color: var(--gold);
+      }
+
+      .hero-label {
+        display: block;
+        margin-top: 4px;
+        font-size: 0.74rem;
+        color: var(--muted);
+      }
+
+      .hero-visual {
+        position: relative;
+        min-height: min(72vh, 720px);
+      }
+
+      .hero-main {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: var(--radius);
+        border: 1px solid var(--line);
+        box-shadow: var(--shadow);
+        transform: perspective(1200px) rotateY(-3deg);
+      }
+
+      .hero-main::after {
+        content: "";
+      }
+
+      .hero-main-overlay {
+        position: absolute;
+        inset: 0;
+        border-radius: var(--radius);
+        border: 1px solid transparent;
+        background: linear-gradient(140deg, rgba(6, 11, 19, 0.15), rgba(3, 10, 18, 0.74));
+        pointer-events: none;
+      }
+
+      .floating {
+        position: absolute;
+        width: min(160px, 34%);
+        aspect-ratio: 3 / 4;
+        border-radius: 14px;
+        border: 1px solid var(--line);
+        object-fit: cover;
+        box-shadow: 0 14px 32px rgba(0, 0, 0, 0.4);
+        animation: drift 5.8s ease-in-out infinite;
+      }
+
+      .floating.left {
+        left: -8%;
+        bottom: 8%;
+      }
+
+      .floating.right {
+        right: -8%;
+        top: 12%;
+        animation-delay: 1.6s;
+      }
+
+      .orb {
+        position: absolute;
+        width: 220px;
+        height: 220px;
+        border-radius: 50%;
+        background: radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.7), rgba(134, 214, 255, 0.08) 35%, transparent 72%);
+        filter: blur(1px);
+        opacity: 0.6;
+        top: -60px;
+        left: -90px;
+        pointer-events: none;
+      }
+
+      .section {
+        padding: clamp(56px, 7vw, 86px) clamp(18px, 4vw, 48px);
+      }
+
+      .section-head {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+      }
+
+      .section h2 {
+        margin: 0;
+        font-size: clamp(1.6rem, 3.2vw, 2.6rem);
+      }
+
+      .section-note {
+        margin: 0;
+        color: var(--muted);
+        max-width: 56ch;
+        line-height: 1.9;
+      }
+
+      .world-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: clamp(16px, 3vw, 28px);
+      }
+
+      .panel {
+        border: 1px solid var(--line-soft);
+        border-radius: var(--radius);
+        background: linear-gradient(150deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015));
+        box-shadow: var(--shadow);
+      }
+
+      .world-copy {
+        padding: clamp(20px, 4vw, 34px);
+      }
+
+      .world-copy p {
+        margin: 0 0 18px;
+        color: #ddd3c0;
+        line-height: 1.9;
+      }
+
+      .world-copy p:last-child {
+        margin-bottom: 0;
+      }
+
+      .world-gallery {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 10px;
+        padding: 10px;
+      }
+
+      .world-gallery img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 14px;
+        border: 1px solid var(--line-soft);
+      }
+
+      .world-gallery .tall {
+        grid-row: span 2;
+        min-height: 340px;
+      }
+
+      .log-lab {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 12px;
+        padding: 12px;
+      }
+
+      .log-stack {
+        display: grid;
+        gap: 12px;
+      }
+
+      .log-card {
+        position: relative;
+        min-height: 260px;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid var(--line-soft);
+      }
+
+      .log-card.tall {
+        min-height: 536px;
+      }
+
+      .log-card img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.35s ease;
+      }
+
+      .log-card:hover img {
+        transform: scale(1.035);
+      }
+
+      .log-card::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(4, 8, 14, 0.08), rgba(4, 8, 14, 0.82));
+      }
+
+      .log-meta {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 14px;
+        z-index: 1;
+      }
+
+      .log-meta h3 {
+        margin: 0;
+        font-size: 0.98rem;
+      }
+
+      .log-meta p {
+        margin: 6px 0 0;
+        color: #d9d0be;
+        font-size: 0.76rem;
+        line-height: 1.6;
+      }
+
+      .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .filter-btn {
+        border: 1px solid var(--line-soft);
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.02);
+        border-radius: 999px;
+        padding: 10px 14px;
+        font-size: 0.72rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+      }
+
+      .filter-btn.active,
+      .filter-btn:hover {
+        color: var(--paper);
+        border-color: rgba(255, 255, 255, 0.45);
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .card-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: clamp(12px, 1.8vw, 18px);
+        position: relative;
+        z-index: 6;
+        isolation: isolate;
+      }
+
+      .card {
+        position: relative;
+        z-index: 3;
+        border-radius: 16px;
+        border: 1px solid var(--line-soft);
+        background: linear-gradient(155deg, rgba(255, 255, 255, 0.1), rgba(0, 0, 0, 0.2));
+        overflow: hidden;
+        cursor: pointer;
+        transform: translateY(0);
+        opacity: 1;
+        transition:
+          transform 0.48s cubic-bezier(0.2, 0.65, 0.2, 1),
+          opacity 0.48s ease,
+          border-color 0.3s ease,
+          box-shadow 0.3s ease;
+        transition-delay: var(--delay, 0ms);
+      }
+
+      .card.show {
+        transform: translateY(0);
+        opacity: 1;
+      }
+
+      .card:hover {
+        transform: translateY(-12px) scale(1.03);
+        z-index: 36;
+        border-color: rgba(255, 255, 255, 0.42);
+        box-shadow:
+          0 24px 48px rgba(0, 0, 0, 0.55),
+          0 0 0 1px rgba(134, 214, 255, 0.35);
+      }
+
+      .card img {
+        width: 100%;
+        aspect-ratio: 3 / 4;
+        object-fit: cover;
+        transition: transform 0.35s ease, filter 0.35s ease;
+      }
+
+      .card:hover img {
+        transform: scale(1.07);
+        filter: brightness(1.1) saturate(1.12);
+      }
+
+      .card-body {
+        padding: 12px 12px 14px;
+      }
+
+      .card-title {
+        margin: 0;
+        font-size: 1.02rem;
+      }
+
+      .card-sub {
+        margin: 6px 0 0;
+        font-size: 0.74rem;
+        color: var(--muted);
+      }
+
+      .card-tags {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+        flex-wrap: wrap;
+      }
+
+      .badge {
+        border-radius: 999px;
+        border: 1px solid var(--line-soft);
+        padding: 5px 10px;
+        font-size: 0.64rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .badge.gold {
+        color: var(--gold);
+      }
+
+      .badge.ice {
+        color: var(--ice);
+      }
+
+      .enemy-rack {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      .enemy-tile {
+        position: relative;
+        min-height: 220px;
+        border-radius: 16px;
+        overflow: hidden;
+        border: 1px solid var(--line-soft);
+      }
+
+      .enemy-tile img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+
+      .enemy-tile::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(180deg, rgba(0, 0, 0, 0.08), rgba(0, 0, 0, 0.75));
+      }
+
+      .enemy-info {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 14px;
+        z-index: 1;
+      }
+
+      .enemy-info h3 {
+        margin: 0;
+        font-size: 1rem;
+      }
+
+      .enemy-info p {
+        margin: 6px 0 0;
+        color: #decbb8;
+        font-size: 0.76rem;
+      }
+
+      .music-panel {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 16px;
+        padding: clamp(16px, 3vw, 26px);
+      }
+
+      .music-display {
+        border: 1px solid var(--line-soft);
+        border-radius: 16px;
+        padding: 16px;
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .music-title {
+        margin: 0;
+        font-size: 1.1rem;
+      }
+
+      .music-sub {
+        margin: 8px 0 14px;
+        color: var(--muted);
+        font-size: 0.85rem;
+      }
+
+      .equalizer {
+        display: flex;
+        align-items: flex-end;
+        gap: 6px;
+        height: 48px;
+      }
+
+      .equalizer span {
+        width: 10px;
+        border-radius: 999px;
+        height: 20%;
+        background: linear-gradient(180deg, var(--ice), var(--gold));
+        animation: bounce 1s ease-in-out infinite;
+        animation-play-state: paused;
+      }
+
+      .music-playing .equalizer span {
+        animation-play-state: running;
+      }
+
+      .equalizer span:nth-child(2) {
+        animation-delay: 0.1s;
+      }
+
+      .equalizer span:nth-child(3) {
+        animation-delay: 0.2s;
+      }
+
+      .equalizer span:nth-child(4) {
+        animation-delay: 0.3s;
+      }
+
+      .equalizer span:nth-child(5) {
+        animation-delay: 0.4s;
+      }
+
+      .music-actions {
+        display: grid;
+        gap: 10px;
+      }
+
+      .btn {
+        width: 100%;
+        border: 1px solid var(--line-soft);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.04);
+        color: var(--paper);
+        padding: 11px 12px;
+        font-size: 0.8rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        cursor: pointer;
+        transition: border-color 0.2s ease, transform 0.2s ease;
+      }
+
+      .btn:hover,
+      .btn.active {
+        border-color: rgba(255, 255, 255, 0.5);
+        transform: translateY(-1px);
+      }
+
+      .volume-wrap {
+        padding: 4px 2px;
+      }
+
+      .volume-wrap label {
+        display: block;
+        font-size: 0.7rem;
+        color: var(--muted);
+        margin-bottom: 8px;
+        letter-spacing: 0.08em;
+      }
+
+      .volume-wrap input {
+        width: 100%;
+      }
+
+      .guide-box {
+        padding: clamp(18px, 3vw, 24px);
+      }
+
+      .guide-box ol {
+        margin: 12px 0 0;
+        padding-left: 20px;
+        color: #e1d8c8;
+        line-height: 1.85;
+      }
+
+      .guide-box strong {
+        color: var(--gold);
+      }
+
+      .primer-panel {
+        padding: clamp(18px, 3vw, 26px);
+      }
+
+      .primer-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+
+      .primer-col {
+        border: 1px solid var(--line-soft);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.04);
+        padding: 14px;
+      }
+
+      .primer-col h3 {
+        margin: 0 0 10px;
+        font-size: 1rem;
+      }
+
+      .primer-list {
+        margin: 0;
+        padding-left: 18px;
+        color: #ddd3c0;
+        line-height: 1.8;
+      }
+
+      .primer-list strong {
+        color: var(--gold);
+      }
+
+      .footer {
+        padding: 28px 18px 40px;
+        text-align: center;
+        color: #bcb29f;
+        font-size: 0.74rem;
+        letter-spacing: 0.08em;
+      }
+
+      .reveal {
+        opacity: 1;
+        transform: translateY(0);
+        transition: opacity 0.8s ease, transform 0.8s ease;
+      }
+
+      .reveal.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .modal {
+        position: fixed;
+        inset: 0;
+        z-index: 130;
+        background: rgba(0, 0, 0, 0.72);
+        display: none;
+        place-items: center;
+        padding: 18px;
+      }
+
+      .modal.is-open {
+        display: grid;
+      }
+
+      .modal-card {
+        width: min(980px, 100%);
+        max-height: calc(100vh - 36px);
+        overflow: auto;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: linear-gradient(145deg, rgba(11, 21, 36, 0.96), rgba(4, 11, 20, 0.98));
+        box-shadow: var(--shadow);
+      }
+
+      .modal-body {
+        padding: 16px;
+      }
+
+      .modal-copy h3 {
+        margin: 2px 0 6px;
+        font-size: clamp(1.25rem, 2.6vw, 1.8rem);
+      }
+
+      .modal-copy p {
+        margin: 0;
+        color: #d8cfbf;
+      }
+
+      .modal-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .modal-close {
+        border: 1px solid var(--line-soft);
+        border-radius: 999px;
+        width: 34px;
+        height: 34px;
+        background: rgba(255, 255, 255, 0.05);
+        color: var(--paper);
+        cursor: pointer;
+      }
+
+      .meta-list {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .meta-item {
+        border: 1px solid var(--line-soft);
+        border-radius: 12px;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.03);
+      }
+
+      .meta-item .label {
+        display: block;
+        font-size: 0.68rem;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.11em;
+      }
+
+      .meta-item .value {
+        display: block;
+        margin-top: 4px;
+      }
+
+      .stats {
+        margin-top: 14px;
+        display: grid;
+        gap: 8px;
+      }
+
+      .stat-row {
+        display: grid;
+        grid-template-columns: 40px 1fr 36px;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .stat-row .name {
+        font-size: 0.72rem;
+        color: var(--muted);
+      }
+
+      .stat-row .bar {
+        height: 8px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.12);
+        overflow: hidden;
+      }
+
+      .stat-row .bar i {
+        display: block;
+        height: 100%;
+        background: linear-gradient(90deg, var(--ice), var(--gold));
+      }
+
+      .stat-row .num {
+        text-align: right;
+        font-size: 0.76rem;
+      }
+
+      .stat-empty {
+        margin-top: 14px;
+        padding: 12px;
+        border-radius: 12px;
+        border: 1px solid var(--line-soft);
+        color: var(--muted);
+        background: rgba(255, 255, 255, 0.02);
+      }
+
+      @keyframes bounce {
+        0%,
+        100% {
+          height: 20%;
+        }
+        50% {
+          height: 92%;
+        }
+      }
+
+      @keyframes drift {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-10px);
+        }
+      }
+
+      @media (max-width: 1080px) {
+        .card-grid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+
+        .enemy-rack {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .log-card.tall {
+          min-height: 460px;
+        }
+      }
+
+      @media (max-width: 900px) {
+        .hero-shell,
+        .world-grid,
+        .music-panel,
+        .log-lab,
+        .primer-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .hero-visual {
+          min-height: 520px;
+        }
+
+        .floating.left {
+          left: 2%;
+          bottom: -6%;
+        }
+
+        .floating.right {
+          right: 2%;
+        }
+
+        .card-grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .log-card.tall {
+          min-height: 340px;
+        }
+      }
+
+      @media (max-width: 620px) {
+        .topbar {
+          gap: 10px;
+        }
+
+        .topbar nav {
+          gap: 10px;
+        }
+
+        .topbar nav a {
+          font-size: 0.7rem;
+        }
+
+        .hero-metrics {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .card-grid,
+        .enemy-rack {
+          grid-template-columns: 1fr;
+        }
+
+        .meta-list {
+          grid-template-columns: 1fr;
+        }
+
+        .log-card,
+        .log-card.tall {
+          min-height: 220px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="stardust" aria-hidden="true"></canvas>
+    <div class="noise" aria-hidden="true"></div>
+
+    <div class="site-wrap">
+      <header class="topbar">
+        <div class="logo">GOD ARCADIA | CELESTIAL CHRONICLE</div>
+        <nav aria-label="ページ内ナビゲーション">
+          <a href="https://aico-creation.github.io/godarkadia/" target="_blank" rel="noopener noreferrer">Play</a>
+          <a href="#world">World</a>
+          <a href="#log">Log</a>
+          <a href="#archive">Archive</a>
+          <a href="#warfront">Warfront</a>
+          <a href="#music">Music</a>
+          <a href="#guide">Guide</a>
+          <a href="#primer">Primer</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero reveal" id="top">
+          <div class="hero-shell">
+            <div class="hero-copy">
+              <p class="eyebrow">TACTICAL FANTASY PROJECT</p>
+              <h1>ゴッドアルカディア<br />星詩の記録庫</h1>
+              <p class="hero-lead">
+                神聖人と人間が共存する空域都市アルカディア。主人公ゼオライトとアリアナが、
+                聖域オリジンと神々の楽園ゴッドアルカディアの秘密に迫る戦場を、公式アート素材で再構築しました。
+              </p>
+              <div class="hero-actions">
+                <a
+                  class="cta play"
+                  href="https://aico-creation.github.io/godarkadia/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label="ゴッドアルカディア本編を開く"
+                  >ゲームを開始する</a>
+                <a class="cta primary" href="#archive">キャラクターを見る</a>
+                <a class="cta" href="#music">BGMを再生</a>
+              </div>
+              <div class="hero-metrics">
+                <div class="metric">
+                  <span class="hero-number">36</span>
+                  <span class="hero-label">掲載ビジュアル</span>
+                </div>
+                <div class="metric">
+                  <span class="hero-number">22</span>
+                  <span class="hero-label">味方ユニット</span>
+                </div>
+                <div class="metric">
+                  <span class="hero-number">11</span>
+                  <span class="hero-label">敵勢力</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="hero-visual" id="hero-visual">
+              <div class="orb" id="orb"></div>
+              <img class="hero-main" src="1.image/title/title2.jpg" alt="ゴッドアルカディア タイトルビジュアル" />
+              <div class="hero-main-overlay" aria-hidden="true"></div>
+              <img class="floating left" src="1.image/prayer_SR/Ariana.jpg" alt="祈りのアリアナ" />
+              <img class="floating right" src="1.image/enemy/Chaos Destroyer.jpg" alt="カオスデストロイヤー" />
+            </div>
+          </div>
+        </section>
+
+        <section class="section reveal" id="world">
+          <div class="section-head">
+            <h2>World Chronicle</h2>
+            <p class="section-note">
+              祈りの系譜、侵攻する影、召喚される異邦の騎士。物語の熱量を、写真集のような密度で可視化します。
+            </p>
+          </div>
+
+          <div class="world-grid">
+            <article class="panel world-copy">
+              <p>
+                アルカディアは、空と光を司る神域と、地上を駆ける人間勢力が織り成す戦略世界。
+                前線では速攻のランサー、後衛では祈祷師が陣形を支え、たった一手で戦局が変化します。
+              </p>
+              <p>
+                このページでは、ストーリーキャラ・Sキャラ・召喚枠・敵勢力を横断し、
+                1枚ずつアートを主役に据えたギャラリー体験を提供します。
+              </p>
+              <p>
+                カードをクリックすると個別パネルを表示。ステータス値があるキャラはATK〜LUKまで可視化し、
+                世界観テキストと合わせて確認できます。
+              </p>
+            </article>
+
+            <article class="panel world-gallery">
+              <img class="tall" src="1.image/title/title.jpg" alt="タイトルアート" loading="lazy" decoding="async" />
+              <img src="1.image/prayer_SR/Lancelate.jpg" alt="光速のランセレイト" loading="lazy" decoding="async" />
+              <img src="1.image/enemy/Baroque.jpg" alt="敵将バロック" loading="lazy" decoding="async" />
+            </article>
+          </div>
+        </section>
+
+        <section class="section reveal" id="log">
+          <div class="section-head">
+            <h2>Log Sequence</h2>
+            <p class="section-note">
+              `ログ` フォルダの3枚を時系列で配置。中央帯の情報量を高め、視線が止まるビジュアルノードを追加しました。
+            </p>
+          </div>
+
+          <div class="panel log-lab">
+            <article class="log-card tall">
+              <img
+                src="ログ/スクリーンショット 2026-02-10 9.38.37.png"
+                alt="ログキャプチャ 1"
+                loading="lazy"
+                decoding="async"
+              />
+              <div class="log-meta">
+                <h3>LOG / 09:38</h3>
+                <p>オープニング帯の構図確認ショット。全体トーンと文字密度の基準点。</p>
+              </div>
+            </article>
+            <div class="log-stack">
+              <article class="log-card">
+                <img
+                  src="ログ/スクリーンショット 2026-02-10 9.39.06.png"
+                  alt="ログキャプチャ 2"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div class="log-meta">
+                  <h3>LOG / 09:39</h3>
+                  <p>中段のカード密度を調整したバリエーション。ギャラリー層の視認性チェック。</p>
+                </div>
+              </article>
+              <article class="log-card">
+                <img
+                  src="ログ/スクリーンショット 2026-02-10 9.39.45.png"
+                  alt="ログキャプチャ 3"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <div class="log-meta">
+                  <h3>LOG / 09:39:45</h3>
+                  <p>配色と余白バランスの最終比較ショット。戦場セクション前の導線として機能。</p>
+                </div>
+              </article>
+            </div>
+          </div>
+        </section>
+
+        <section class="section reveal" id="archive">
+          <div class="section-head">
+            <h2>Character Archive</h2>
+            <p id="archive-count" class="section-note">全ユニット表示中</p>
+          </div>
+
+          <div class="filters" role="tablist" aria-label="キャラカテゴリフィルタ">
+            <button class="filter-btn active" type="button" data-filter="all">ALL</button>
+            <button class="filter-btn" type="button" data-filter="story">STORY SR</button>
+            <button class="filter-btn" type="button" data-filter="s">S CLASS</button>
+            <button class="filter-btn" type="button" data-filter="summon">SUMMON</button>
+            <button class="filter-btn" type="button" data-filter="enemy">ENEMY</button>
+          </div>
+
+          <div id="card-grid" class="card-grid" aria-live="polite"></div>
+        </section>
+
+        <section class="section reveal" id="warfront">
+          <div class="section-head">
+            <h2>Warfront Highlights</h2>
+            <p class="section-note">敵勢力の中核ユニットをピックアップ。冷たい彩度と重い影で戦場の緊張感を演出しています。</p>
+          </div>
+
+          <div class="enemy-rack">
+            <article class="enemy-tile">
+              <img src="1.image/enemy/Seiran.jpg" alt="セイラン" loading="lazy" decoding="async" />
+              <div class="enemy-info">
+                <h3>SEIRAN</h3>
+                <p>蒼風の先鋒</p>
+              </div>
+            </article>
+            <article class="enemy-tile">
+              <img src="1.image/enemy/Izel.jpg" alt="イゼル" loading="lazy" decoding="async" />
+              <div class="enemy-info">
+                <h3>IZEL</h3>
+                <p>深夜の氷刃</p>
+              </div>
+            </article>
+            <article class="enemy-tile">
+              <img src="1.image/enemy/Mira.jpg" alt="ミラ" loading="lazy" decoding="async" />
+              <div class="enemy-info">
+                <h3>MIRA</h3>
+                <p>幻導の女王</p>
+              </div>
+            </article>
+            <article class="enemy-tile">
+              <img src="1.image/enemy/Arkan.jpg" alt="アルカン" loading="lazy" decoding="async" />
+              <div class="enemy-info">
+                <h3>ARKAN</h3>
+                <p>侵攻軍団の刃</p>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="section reveal" id="music">
+          <div class="section-head">
+            <h2>Sound Chamber</h2>
+            <p class="section-note">公式BGMをその場で再生。ブラウザ仕様により最初の再生はボタン操作が必要です。</p>
+          </div>
+
+          <div class="panel music-panel" id="music-panel">
+            <article class="music-display">
+              <p class="eyebrow">CURRENT TRACK</p>
+              <h3 id="music-title" class="music-title">main.mp3</h3>
+              <p class="music-sub">楽曲: メインテーマ</p>
+              <div class="equalizer" aria-hidden="true">
+                <span></span><span></span><span></span><span></span><span></span>
+              </div>
+              <audio id="bgm" src="1.image/music/main.mp3" preload="metadata" loop></audio>
+            </article>
+
+            <div class="music-actions">
+              <button class="btn" type="button" id="play-toggle">PLAY / PAUSE</button>
+              <button class="btn active track-btn" type="button" data-src="1.image/music/main.mp3" data-label="main.mp3">
+                TRACK: MAIN
+              </button>
+              <button class="btn track-btn" type="button" data-src="1.image/music/ゴッドアルカディア.mp3" data-label="ゴッドアルカディア.mp3">
+                TRACK: ゴッドアルカディア
+              </button>
+              <div class="volume-wrap">
+                <label for="volume">VOLUME</label>
+                <input id="volume" type="range" min="0" max="1" step="0.01" value="0.6" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section reveal" id="guide">
+          <div class="section-head">
+            <h2>Quick Guide</h2>
+            <p class="section-note">閲覧操作の要点です。詳細は同フォルダの `説明書.md` に記載しています。</p>
+          </div>
+
+          <article class="panel guide-box">
+            <ol>
+              <li>上部メニューでセクション移動、`Log Sequence` と `Character Archive` が中央導線の主軸です。</li>
+              <li>カードをクリックすると詳細モーダルを開き、職業・属性・ステータスを確認できます。</li>
+              <li>`Sound Chamber` の <strong>PLAY / PAUSE</strong> でBGM制御、下のボタンで楽曲切替が可能です。</li>
+              <li>背景演出とカード表示はデスクトップ/モバイル両対応です。詳しい用語は次の `Primer` を参照してください。</li>
+            </ol>
+          </article>
+        </section>
+
+        <section class="section reveal" id="primer">
+          <div class="section-head">
+            <h2>Status & Command Primer</h2>
+            <p class="section-note">ゲーム内UI想定に合わせた、大まかなステータスとコマンドの説明です。</p>
+          </div>
+
+          <article class="panel primer-panel">
+            <div class="primer-grid">
+              <section class="primer-col" aria-label="ステータス解説">
+                <h3>ステータス解説</h3>
+                <ol class="primer-list">
+                  <li><strong>ATK</strong>: 物理攻撃の火力。通常攻撃や物理スキルのダメージに影響。</li>
+                  <li><strong>DEF</strong>: 物理耐久。被物理ダメージを抑える防御性能。</li>
+                  <li><strong>MAG</strong>: 魔法攻撃の火力。術系スキルの威力に影響。</li>
+                  <li><strong>SPR</strong>: 魔法耐久。被魔法ダメージや状態異常耐性の基礎。</li>
+                  <li><strong>SPD</strong>: 行動順や移動展開の速さ。先手を取りやすくなる。</li>
+                  <li><strong>LUK</strong>: クリティカル・回避・ドロップ運など補助要素に関与。</li>
+                </ol>
+              </section>
+
+              <section class="primer-col" aria-label="コマンド解説">
+                <h3>コマンド解説</h3>
+                <ol class="primer-list">
+                  <li><strong>ATTACK</strong>: 基本行動。リスクが低く安定した単体攻撃。</li>
+                  <li><strong>SKILL</strong>: MPやCTを使って強力な固有技を発動。</li>
+                  <li><strong>GUARD</strong>: そのターンの被ダメージを軽減し、態勢を整える。</li>
+                  <li><strong>MOVE</strong>: 射程調整や陣形維持のために位置を変更。</li>
+                  <li><strong>ITEM</strong>: 回復・蘇生・補助を行う消耗品コマンド。</li>
+                  <li><strong>SUMMON</strong>: 条件を満たすと召喚ユニットを展開。</li>
+                  <li><strong>WAIT</strong>: 行動終了。次ターンへ繋ぐテンポ調整用。</li>
+                </ol>
+              </section>
+            </div>
+          </article>
+        </section>
+      </main>
+
+      <footer class="footer">GOD ARCADIA ASSET SHOWCASE | crafted in pure HTML/CSS/JS</footer>
+    </div>
+
+    <div id="unit-modal" class="modal" aria-hidden="true">
+      <article class="modal-card">
+        <div class="modal-body">
+          <div class="modal-copy">
+            <div class="modal-header-row">
+              <div>
+                <p class="eyebrow" id="modal-eyebrow">UNIT DATA</p>
+                <h3 id="modal-name">-</h3>
+              </div>
+              <button id="modal-close" class="modal-close" type="button" aria-label="閉じる">×</button>
+            </div>
+            <p id="modal-lore">-</p>
+            <div id="modal-meta" class="meta-list"></div>
+            <div id="modal-stats" class="stats"></div>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <script>
+      const units = [
+        {
+          id: "ariana",
+          name: "祈りのアリアナ",
+          group: "story",
+          tier: "Story SR",
+          job: "プリースト",
+          element: "空",
+          race: "神聖人",
+          image: "1.image/prayer_SR/Ariana.jpg",
+          lore: "祈りで前線を支える聖域の要。高SPRとMAGで長期戦に強い。",
+          stats: { ATK: 20, DEF: 51, MAG: 78, SPR: 91, SPD: 65, LUK: 79 }
+        },
+        {
+          id: "lancelate",
+          name: "光速のランセレイト",
+          group: "story",
+          tier: "Story SR",
+          job: "ランサー",
+          element: "光",
+          race: "神聖人",
+          image: "1.image/prayer_SR/Lancelate.jpg",
+          lore: "神速突撃の代名詞。SPD96で戦場を一気に切り裂く。",
+          stats: { ATK: 82, DEF: 78, MAG: 51, SPR: 70, SPD: 96, LUK: 61 }
+        },
+        {
+          id: "gaius",
+          name: "鉄壁のガイウス",
+          group: "story",
+          tier: "Story SR",
+          job: "ガーディアン",
+          element: "地",
+          race: "神聖人",
+          image: "1.image/prayer_SR/Gaius.jpg",
+          lore: "鋼の陣を築く盾役。DEF92で部隊の被害を引き受ける。",
+          stats: { ATK: 80, DEF: 92, MAG: 19, SPR: 79, SPD: 49, LUK: 55 }
+        },
+        {
+          id: "zeolight",
+          name: "未発のゼオライト",
+          group: "story",
+          tier: "Story SR",
+          job: "ソーディアン",
+          element: "光",
+          race: "人間",
+          image: "1.image/prayer_SR/Zeolight.jpg",
+          lore: "重斬と機動のバランス型。ATKとSPDが高水準。",
+          stats: { ATK: 85, DEF: 71, MAG: 63, SPR: 74, SPD: 75, LUK: 77 }
+        },
+        {
+          id: "eldas",
+          name: "神眼のエルダス",
+          group: "story",
+          tier: "Story SR",
+          job: "ウィザード",
+          element: "闇",
+          race: "神聖人",
+          image: "1.image/prayer_SR/Eldas.jpg",
+          lore: "視界そのものを支配する術者。MAG92の遠距離砲台。",
+          stats: { ATK: 25, DEF: 33, MAG: 92, SPR: 85, SPD: 36, LUK: 78 }
+        },
+        {
+          id: "lion",
+          name: "精密のリオン",
+          group: "story",
+          tier: "Story SR",
+          job: "アーチャー",
+          element: "風",
+          race: "神聖人",
+          image: "1.image/prayer_SR/Lion.jpg",
+          lore: "高速連射と命中制圧を兼ねる射手。SPD91が光る。",
+          stats: { ATK: 72, DEF: 56, MAG: 52, SPR: 67, SPD: 91, LUK: 79 }
+        },
+        {
+          id: "serise",
+          name: "真紅のセリーズ",
+          group: "story",
+          tier: "Story SR",
+          job: "ウィッパー",
+          element: "火",
+          race: "神聖人",
+          image: "1.image/prayer_SR/Serise.jpg",
+          lore: "火線を描く中距離アタッカー。LUK82で一撃が重い。",
+          stats: { ATK: 78, DEF: 52, MAG: 55, SPR: 63, SPD: 90, LUK: 82 }
+        },
+        {
+          id: "aurum",
+          name: "流離いのアウルム",
+          group: "story",
+          tier: "Story SR",
+          job: "ウィッパー",
+          element: "風",
+          race: "神聖人",
+          image: "1.image/prayer_SR/Aurum.jpg",
+          lore: "放浪する戦術家。全体値が安定し、LUK90が際立つ。",
+          stats: { ATK: 75, DEF: 74, MAG: 69, SPR: 73, SPD: 74, LUK: 90 }
+        },
+        {
+          id: "isaya",
+          name: "剣士のイザヤ",
+          group: "story",
+          tier: "Story SR",
+          job: "剣士",
+          element: "風",
+          race: "人間",
+          image: "1.image/prayer_SR/Isaya.jpg",
+          lore: "純粋な剣技で突破口を開く前衛主力。",
+          stats: { ATK: 88, DEF: 70, MAG: 45, SPR: 56, SPD: 78, LUK: 76 }
+        },
+        {
+          id: "takahiko",
+          name: "道化師のタカヒコ",
+          group: "story",
+          tier: "Story SR",
+          job: "トリックスター",
+          element: "地",
+          race: "人間",
+          image: "1.image/prayer_SR/Takahiko.jpg",
+          lore: "攪乱と火力を同時に実現する奇術師。",
+          stats: { ATK: 71, DEF: 65, MAG: 73, SPR: 72, SPD: 79, LUK: 89 }
+        },
+        {
+          id: "nami",
+          name: "月夜のナミ",
+          group: "story",
+          tier: "Story SR",
+          job: "ビショップ",
+          element: "水",
+          race: "人間",
+          image: "1.image/prayer_SR/Nami.jpg",
+          lore: "月光の支援魔術で味方を蘇生。SPR81の回復核。",
+          stats: { ATK: 22, DEF: 42, MAG: 82, SPR: 81, SPD: 73, LUK: 74 }
+        },
+        {
+          id: "madocas",
+          name: "酔狂のマドカス",
+          group: "story",
+          tier: "Story SR",
+          job: "ベルセルク",
+          element: "空",
+          race: "人間",
+          image: "1.image/prayer_SR/Madocas.jpg",
+          lore: "暴威を振るう近接破壊兵。ATK95で押し切る。",
+          stats: { ATK: 95, DEF: 59, MAG: 34, SPR: 56, SPD: 71, LUK: 69 }
+        },
+        {
+          id: "leona",
+          name: "蒼盾のレオナ",
+          group: "s",
+          tier: "S Class",
+          job: "ガーディアン",
+          element: "水",
+          race: "人間",
+          image: "1.image/prayer_S/Leona.jpg",
+          lore: "冷静な防衛司令塔。前線を崩さない蒼い盾。",
+          stats: { ATK: 58, DEF: 81, MAG: 31, SPR: 68, SPD: 54, LUK: 63 }
+        },
+        {
+          id: "shion",
+          name: "風刃のシオン",
+          group: "s",
+          tier: "S Class",
+          job: "ランサー",
+          element: "風",
+          race: "人間",
+          image: "1.image/prayer_S/Shion.jpg",
+          lore: "風を裂く一突きで制圧する俊足槍兵。",
+          stats: { ATK: 74, DEF: 55, MAG: 34, SPR: 52, SPD: 84, LUK: 66 }
+        },
+        {
+          id: "kagura",
+          name: "焔術のカグラ",
+          group: "s",
+          tier: "S Class",
+          job: "ウィザード",
+          element: "火",
+          race: "神聖人",
+          image: "1.image/prayer_S/Kagura.jpg",
+          lore: "炎術に特化した魔導士。MAG79で殲滅を担当。",
+          stats: { ATK: 33, DEF: 44, MAG: 79, SPR: 72, SPD: 61, LUK: 68 }
+        },
+        {
+          id: "mirei",
+          name: "祈鐘のミレイ",
+          group: "s",
+          tier: "S Class",
+          job: "プリースト",
+          element: "光",
+          race: "人間",
+          image: "1.image/prayer_S/Mirei.jpg",
+          lore: "鐘声で陣を立て直す回復要員。",
+          stats: { ATK: 27, DEF: 49, MAG: 71, SPR: 83, SPD: 58, LUK: 72 }
+        },
+        {
+          id: "vardo",
+          name: "斥候のヴァルド",
+          group: "s",
+          tier: "S Class",
+          job: "アーチャー",
+          element: "地",
+          race: "神聖人",
+          image: "1.image/prayer_S/Vardo.jpg",
+          lore: "地形を使いこなす索敵の達人。",
+          stats: { ATK: 69, DEF: 52, MAG: 41, SPR: 57, SPD: 80, LUK: 75 }
+        },
+        {
+          id: "noct",
+          name: "影渡りのノクト",
+          group: "s",
+          tier: "S Class",
+          job: "トリックスター",
+          element: "闇",
+          race: "人間",
+          image: "1.image/prayer_S/Noct.jpg",
+          lore: "影の縫い目を渡る攪乱特化ユニット。",
+          stats: { ATK: 62, DEF: 48, MAG: 60, SPR: 55, SPD: 82, LUK: 81 }
+        },
+        {
+          id: "lucia",
+          name: "波紋のルチア",
+          group: "s",
+          tier: "S Class",
+          job: "ビショップ",
+          element: "水",
+          race: "神聖人",
+          image: "1.image/prayer_S/Lucia.jpg",
+          lore: "波紋を広げる広域支援型。継戦能力が高い。",
+          stats: { ATK: 29, DEF: 46, MAG: 76, SPR: 79, SPD: 64, LUK: 70 }
+        },
+        {
+          id: "drake-ally",
+          name: "豪斧のドレイク",
+          group: "s",
+          tier: "S Class",
+          job: "ベルセルク",
+          element: "地",
+          race: "人間",
+          image: "1.image/prayer_S/Drake.jpg",
+          lore: "重斧の破壊力で前線を押し切る近接兵。",
+          stats: { ATK: 83, DEF: 61, MAG: 18, SPR: 44, SPD: 57, LUK: 60 }
+        },
+        {
+          id: "luna",
+          name: "月祈のルナ",
+          group: "summon",
+          tier: "Summon SR",
+          job: "ビショップ",
+          element: "光",
+          race: "神聖人",
+          image: "1.image/pass/Luna.jpg",
+          lore: "月光祈祷で味方を強化する召喚枠SR。",
+          stats: { ATK: 24, DEF: 46, MAG: 91, SPR: 84, SPD: 63, LUK: 75 }
+        },
+        {
+          id: "jeffrey",
+          name: "老練のジェフリー",
+          group: "summon",
+          tier: "Summon SR",
+          job: "マジックナイト",
+          element: "光",
+          race: "人間",
+          image: "1.image/pass/Jeffrey.jpg",
+          lore: "剣と魔法を併せ持つ古参騎士。全体性能が高い。",
+          stats: { ATK: 84, DEF: 72, MAG: 83, SPR: 80, SPD: 67, LUK: 70 }
+        },
+        {
+          id: "enemy-seiran",
+          name: "セイラン",
+          group: "enemy",
+          tier: "Enemy",
+          job: "先鋒",
+          element: "風",
+          race: "侵攻軍",
+          image: "1.image/enemy/Seiran.jpg",
+          lore: "俊敏さを武器に先手を取る侵攻部隊の槍。"
+        },
+        {
+          id: "enemy-drake",
+          name: "ドレイク",
+          group: "enemy",
+          tier: "Enemy",
+          job: "破壊兵",
+          element: "火",
+          race: "侵攻軍",
+          image: "1.image/enemy/Drake.jpg",
+          lore: "荒々しい打撃で陣形を壊す重装兵。"
+        },
+        {
+          id: "enemy-grom",
+          name: "グロム",
+          group: "enemy",
+          tier: "Enemy",
+          job: "巨兵",
+          element: "地",
+          race: "侵攻軍",
+          image: "1.image/enemy/Grom.jpg",
+          lore: "圧倒的な質量で道を塞ぐ壁役。"
+        },
+        {
+          id: "enemy-vald",
+          name: "ヴァルド",
+          group: "enemy",
+          tier: "Enemy",
+          job: "狙撃",
+          element: "闇",
+          race: "侵攻軍",
+          image: "1.image/enemy/Vald.jpg",
+          lore: "後方から致命打を狙う追撃専門。"
+        },
+        {
+          id: "enemy-chaos",
+          name: "カオスデストロイヤー",
+          group: "enemy",
+          tier: "Enemy Boss",
+          job: "破滅機",
+          element: "混沌",
+          race: "古代兵器",
+          image: "1.image/enemy/Chaos Destroyer.jpg",
+          lore: "戦場そのものを焼却する最終兵装。"
+        },
+        {
+          id: "enemy-mira",
+          name: "ミラ",
+          group: "enemy",
+          tier: "Enemy",
+          job: "幻導",
+          element: "水",
+          race: "侵攻軍",
+          image: "1.image/enemy/Mira.jpg",
+          lore: "幻術で味方の判断を狂わせる術者。"
+        },
+        {
+          id: "enemy-izel",
+          name: "イゼル",
+          group: "enemy",
+          tier: "Enemy",
+          job: "暗殺",
+          element: "氷",
+          race: "侵攻軍",
+          image: "1.image/enemy/Izel.jpg",
+          lore: "静かな足音で標的を刈り取る暗殺者。"
+        },
+        {
+          id: "enemy-arkan",
+          name: "アルカン",
+          group: "enemy",
+          tier: "Enemy",
+          job: "司令",
+          element: "闇",
+          race: "侵攻軍",
+          image: "1.image/enemy/Arkan.jpg",
+          lore: "軍勢を束ねる策士。広域指揮で押し込む。"
+        },
+        {
+          id: "enemy-rem",
+          name: "レム",
+          group: "enemy",
+          tier: "Enemy",
+          job: "見張り",
+          element: "風",
+          race: "侵攻軍",
+          image: "1.image/enemy/Rem.jpg",
+          lore: "迷宮戦線を監視する斥候型ユニット。"
+        },
+        {
+          id: "enemy-nocta",
+          name: "ノクタ",
+          group: "enemy",
+          tier: "Enemy",
+          job: "夜襲",
+          element: "闇",
+          race: "侵攻軍",
+          image: "1.image/enemy/Nocta.jpg",
+          lore: "夜戦で猛威を振るう奇襲特化兵。"
+        },
+        {
+          id: "enemy-baroque",
+          name: "バロック",
+          group: "enemy",
+          tier: "Enemy",
+          job: "将軍",
+          element: "火",
+          race: "侵攻軍",
+          image: "1.image/enemy/Baroque.jpg",
+          lore: "赤き軍旗を掲げる強襲将軍。"
+        }
+      ];
+
+      const groupLabel = {
+        all: "全ユニット",
+        story: "Story SR",
+        s: "S Class",
+        summon: "Summon",
+        enemy: "Enemy"
+      };
+
+      const cardGrid = document.getElementById("card-grid");
+      const archiveCount = document.getElementById("archive-count");
+      const filterButtons = document.querySelectorAll(".filter-btn");
+
+      let activeFilter = "all";
+
+      function toCards(filter) {
+        if (filter === "all") {
+          return units;
+        }
+        return units.filter((unit) => unit.group === filter);
+      }
+
+      function cardTemplate(unit, index) {
+        return `
+          <article class="card" data-id="${unit.id}" style="--delay:${Math.min(index * 35, 420)}ms">
+            <img src="${unit.image}" alt="${unit.name}" loading="lazy" decoding="async" />
+            <div class="card-body">
+              <h3 class="card-title">${unit.name}</h3>
+              <p class="card-sub">${unit.tier} / ${unit.job}</p>
+              <div class="card-tags">
+                <span class="badge gold">${unit.element}</span>
+                <span class="badge ice">${unit.race}</span>
+              </div>
+            </div>
+          </article>
+        `;
+      }
+
+      function renderCards() {
+        const list = toCards(activeFilter);
+        archiveCount.textContent = `${groupLabel[activeFilter]}: ${list.length}体`;
+        cardGrid.innerHTML = list.map(cardTemplate).join("");
+        cardGrid.querySelectorAll(".card").forEach((card) => {
+          card.classList.add("show");
+        });
+      }
+
+      filterButtons.forEach((button) => {
+        button.addEventListener("click", () => {
+          activeFilter = button.dataset.filter;
+          filterButtons.forEach((btn) => btn.classList.remove("active"));
+          button.classList.add("active");
+          renderCards();
+        });
+      });
+
+      const modal = document.getElementById("unit-modal");
+      const modalEyebrow = document.getElementById("modal-eyebrow");
+      const modalName = document.getElementById("modal-name");
+      const modalLore = document.getElementById("modal-lore");
+      const modalMeta = document.getElementById("modal-meta");
+      const modalStats = document.getElementById("modal-stats");
+      const modalClose = document.getElementById("modal-close");
+
+      function openModal(unit) {
+        modalEyebrow.textContent = unit.tier.toUpperCase();
+        modalName.textContent = unit.name;
+        modalLore.textContent = unit.lore;
+
+        modalMeta.innerHTML = `
+          <div class="meta-item"><span class="label">Role</span><span class="value">${unit.job}</span></div>
+          <div class="meta-item"><span class="label">Element</span><span class="value">${unit.element}</span></div>
+          <div class="meta-item"><span class="label">Race</span><span class="value">${unit.race}</span></div>
+          <div class="meta-item"><span class="label">Group</span><span class="value">${unit.tier}</span></div>
+        `;
+
+        if (unit.stats) {
+          modalStats.innerHTML = Object.entries(unit.stats)
+            .map(
+              ([key, value]) => `
+                <div class="stat-row">
+                  <span class="name">${key}</span>
+                  <span class="bar"><i style="width:${Math.max(6, Math.min(value, 100))}%"></i></span>
+                  <span class="num">${value}</span>
+                </div>
+              `
+            )
+            .join("");
+        } else {
+          modalStats.innerHTML = `<p class="stat-empty">このユニットはアート展示用データです。実数ステータスは未登録。</p>`;
+        }
+
+        modal.classList.add("is-open");
+        modal.setAttribute("aria-hidden", "false");
+        document.body.classList.add("modal-open");
+      }
+
+      function closeModal() {
+        modal.classList.remove("is-open");
+        modal.setAttribute("aria-hidden", "true");
+        document.body.classList.remove("modal-open");
+      }
+
+      cardGrid.addEventListener("click", (event) => {
+        const card = event.target.closest(".card");
+        if (!card) {
+          return;
+        }
+        const unit = units.find((item) => item.id === card.dataset.id);
+        if (!unit) {
+          return;
+        }
+        openModal(unit);
+      });
+
+      modalClose.addEventListener("click", closeModal);
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal) {
+          closeModal();
+        }
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && modal.classList.contains("is-open")) {
+          closeModal();
+        }
+      });
+
+      const revealTargets = document.querySelectorAll(".reveal");
+      if ("IntersectionObserver" in window) {
+        const revealObserver = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add("is-visible");
+              }
+            });
+          },
+          { threshold: 0.16 }
+        );
+        revealTargets.forEach((el) => revealObserver.observe(el));
+      } else {
+        revealTargets.forEach((el) => el.classList.add("is-visible"));
+      }
+
+      window.addEventListener("scroll", () => {
+        document.body.classList.toggle("scrolled", window.scrollY > 24);
+      });
+
+      const heroVisual = document.getElementById("hero-visual");
+      const orb = document.getElementById("orb");
+      heroVisual.addEventListener("pointermove", (event) => {
+        const rect = heroVisual.getBoundingClientRect();
+        const x = (event.clientX - rect.left) / rect.width - 0.5;
+        const y = (event.clientY - rect.top) / rect.height - 0.5;
+        orb.style.transform = `translate(${x * 48}px, ${y * 38}px)`;
+      });
+
+      const bgm = document.getElementById("bgm");
+      const playToggle = document.getElementById("play-toggle");
+      const trackButtons = document.querySelectorAll(".track-btn");
+      const musicTitle = document.getElementById("music-title");
+      const volume = document.getElementById("volume");
+      const musicPanel = document.getElementById("music-panel");
+
+      bgm.volume = Number(volume.value);
+
+      function updateMusicState() {
+        const playing = !bgm.paused;
+        musicPanel.classList.toggle("music-playing", playing);
+      }
+
+      playToggle.addEventListener("click", async () => {
+        try {
+          if (bgm.paused) {
+            await bgm.play();
+          } else {
+            bgm.pause();
+          }
+          updateMusicState();
+        } catch (_error) {
+          updateMusicState();
+        }
+      });
+
+      trackButtons.forEach((button) => {
+        button.addEventListener("click", async () => {
+          const wasPlaying = !bgm.paused;
+          const src = button.dataset.src;
+          const label = button.dataset.label;
+
+          trackButtons.forEach((item) => item.classList.remove("active"));
+          button.classList.add("active");
+
+          if (bgm.getAttribute("src") !== src) {
+            bgm.setAttribute("src", src);
+            bgm.load();
+          }
+          musicTitle.textContent = label;
+
+          if (wasPlaying) {
+            try {
+              await bgm.play();
+            } catch (_error) {
+              // Ignore play interruption from browser policies.
+            }
+          }
+          updateMusicState();
+        });
+      });
+
+      volume.addEventListener("input", () => {
+        bgm.volume = Number(volume.value);
+      });
+
+      bgm.addEventListener("play", updateMusicState);
+      bgm.addEventListener("pause", updateMusicState);
+
+      const canvas = document.getElementById("stardust");
+      const ctx = canvas.getContext("2d");
+      const dots = [];
+      const dotCount = 44;
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+
+      function initDots() {
+        dots.length = 0;
+        for (let i = 0; i < dotCount; i += 1) {
+          dots.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * canvas.height,
+            vx: (Math.random() - 0.5) * 0.26,
+            vy: (Math.random() - 0.5) * 0.26,
+            r: Math.random() * 1.6 + 0.4
+          });
+        }
+      }
+
+      function drawDots() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "rgba(190, 214, 235, 0.55)";
+
+        for (let i = 0; i < dots.length; i += 1) {
+          const dot = dots[i];
+          dot.x += dot.vx;
+          dot.y += dot.vy;
+
+          if (dot.x < -10) dot.x = canvas.width + 10;
+          if (dot.x > canvas.width + 10) dot.x = -10;
+          if (dot.y < -10) dot.y = canvas.height + 10;
+          if (dot.y > canvas.height + 10) dot.y = -10;
+
+          ctx.beginPath();
+          ctx.arc(dot.x, dot.y, dot.r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        for (let i = 0; i < dots.length; i += 1) {
+          for (let j = i + 1; j < dots.length; j += 1) {
+            const a = dots[i];
+            const b = dots[j];
+            const dx = a.x - b.x;
+            const dy = a.y - b.y;
+            const d = Math.sqrt(dx * dx + dy * dy);
+            if (d < 110) {
+              const alpha = (1 - d / 110) * 0.16;
+              ctx.strokeStyle = `rgba(131, 190, 235, ${alpha})`;
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(a.x, a.y);
+              ctx.lineTo(b.x, b.y);
+              ctx.stroke();
+            }
+          }
+        }
+
+        requestAnimationFrame(drawDots);
+      }
+
+      resizeCanvas();
+      initDots();
+      drawDots();
+
+      window.addEventListener("resize", () => {
+        resizeCanvas();
+        initDots();
+      });
+
+      renderCards();
+    </script>
+  </body>
+</html>
