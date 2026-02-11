@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>god arcadia tactical board</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="ambient" aria-hidden="true"></div>
+
+    <section id="title-screen" class="title-screen" aria-label="タイトル画面">
+      <img
+        class="title-screen-art"
+        src="1.image/title/title.jpg"
+        alt="GOD ARCADIA タイトルアート"
+        loading="eager"
+        decoding="async"
+      />
+      <div class="title-screen-overlay"></div>
+      <div class="title-screen-content">
+        <p class="title-screen-kicker">god arcadia</p>
+        <h1 class="title-screen-title">GOD ARCADIA</h1>
+        <p id="title-primary-tap" class="title-screen-tap">タイトル画面をクリック</p>
+        <div id="title-menu" class="title-menu" hidden>
+          <button id="title-start-btn" class="title-menu-btn" type="button">スタート</button>
+          <button id="title-arena-btn" class="title-menu-btn" type="button">闘技場</button>
+          <button id="title-password-btn" class="title-menu-btn" type="button">パスワード</button>
+          <button id="title-settings-btn" class="title-menu-btn" type="button">設定</button>
+        </div>
+        <p id="title-subnote" class="title-subnote" hidden></p>
+
+        <section id="title-password-panel" class="title-password-panel" hidden aria-label="パスワード入力">
+          <header class="title-password-head">
+            <p class="title-password-kicker">password summon</p>
+            <h2>召喚パスワード</h2>
+          </header>
+
+          <form id="title-password-form" class="title-password-form" novalidate>
+            <label for="title-password-input">パスワード</label>
+            <div class="title-password-row">
+              <input
+                id="title-password-input"
+                class="title-password-input"
+                type="text"
+                name="title-password"
+                autocomplete="off"
+                spellcheck="false"
+                placeholder="パスワードを入力"
+                aria-label="召喚パスワード"
+              />
+              <button id="title-password-submit-btn" class="title-password-submit-btn" type="submit">
+                召喚
+              </button>
+            </div>
+          </form>
+
+          <p id="title-password-note" class="title-password-note" aria-live="polite">
+            コードを入力して召喚ノードを表示
+          </p>
+
+          <div id="title-summon-node" class="title-summon-node" hidden></div>
+
+          <button id="title-password-back-btn" class="title-password-back-btn" type="button">戻る</button>
+        </section>
+
+        <section id="title-settings-panel" class="title-settings-panel" hidden aria-label="設定">
+          <header class="title-settings-head">
+            <p class="title-settings-kicker">title settings</p>
+            <h2>設定</h2>
+          </header>
+
+          <div class="title-settings-grid" role="list" aria-label="設定項目">
+            <article class="title-setting-item" role="listitem">
+              <div class="title-setting-copy">
+                <h3>BGM</h3>
+                <p>タイトルとバトルのBGMを切り替えます。</p>
+              </div>
+              <button
+                id="title-settings-bgm-toggle"
+                class="title-settings-toggle is-on"
+                type="button"
+                aria-pressed="true"
+              >
+                <span class="title-settings-toggle-label">BGM</span>
+                <span id="title-settings-bgm-state" class="title-settings-toggle-state">ON</span>
+              </button>
+            </article>
+
+            <article class="title-setting-item is-placeholder" role="listitem" aria-disabled="true">
+              <div class="title-setting-copy">
+                <h3>SE音量</h3>
+                <p>スキル音・ダメージ音の音量調整を追加予定。</p>
+              </div>
+              <p class="title-setting-placeholder">準備中</p>
+            </article>
+
+            <article class="title-setting-item is-placeholder" role="listitem" aria-disabled="true">
+              <div class="title-setting-copy">
+                <h3>表示設定</h3>
+                <p>演出速度や表示情報の切替を追加予定。</p>
+              </div>
+              <p class="title-setting-placeholder">準備中</p>
+            </article>
+          </div>
+
+          <p class="title-settings-note">今後の機能追加に向けた設定枠を確保しています。</p>
+          <button id="title-settings-back-btn" class="title-settings-back-btn" type="button">戻る</button>
+        </section>
+
+        <section id="title-arena-panel" class="title-arena-panel" hidden aria-label="闘技場">
+          <header class="title-arena-head">
+            <p class="title-arena-kicker">arena challenge</p>
+            <h2>闘技場</h2>
+          </header>
+
+          <div class="title-arena-grid" role="list" aria-label="闘技場の敵選択">
+            <button class="title-arena-btn" type="button" data-title-arena-enemy-id="arena_verm" role="listitem">
+              <span class="name">深淵剣将ヴェルム</span>
+              <span class="meta">試練I / 報酬：ヴォルグラム（Rキャラ）</span>
+            </button>
+            <button
+              class="title-arena-btn"
+              type="button"
+              data-title-arena-enemy-id="arena_ordia"
+              role="listitem"
+              disabled
+              aria-disabled="true"
+            >
+              <span class="name">蝕星のオルディア</span>
+              <span class="meta">試練II（準備中）</span>
+            </button>
+            <button
+              class="title-arena-btn"
+              type="button"
+              data-title-arena-enemy-id="arena_gigas"
+              role="listitem"
+              disabled
+              aria-disabled="true"
+            >
+              <span class="name">崩界のギガス</span>
+              <span class="meta">試練III（準備中）</span>
+            </button>
+          </div>
+
+          <p class="title-arena-note">敵を1体選ぶと、その相手との戦闘を開始します。</p>
+          <button id="title-arena-back-btn" class="title-arena-back-btn" type="button">戻る</button>
+        </section>
+      </div>
+    </section>
+
+    <main class="app-shell">
+      <header class="hero">
+        <h1 class="brand-title">GOD ARCADIA</h1>
+        <p class="brand-credit">Presented by AI Co-Creation Innovation</p>
+      </header>
+
+      <section class="panel status-panel" aria-label="戦況">
+        <article class="combatant enemy">
+          <div class="enemy-layout">
+            <div class="enemy-art-slot" aria-label="敵画像スペース">
+              <img id="enemy-art-image" alt="敵カード画像" loading="eager" decoding="async" />
+            </div>
+
+            <div class="enemy-info">
+              <p class="combatant-label">enemy</p>
+              <h2 id="enemy-name">迷宮の見張りレム</h2>
+              <p class="combatant-sub" id="enemy-sub">第1/11戦 / 属性: 風 / 斥候兵</p>
+
+              <dl class="enemy-stats">
+                <div><dt>ATK</dt><dd id="enemy-stat-atk">72</dd></div>
+                <div><dt>DEF</dt><dd id="enemy-stat-def">26</dd></div>
+                <div><dt>MAG</dt><dd id="enemy-stat-mag">58</dd></div>
+                <div><dt>SPR</dt><dd id="enemy-stat-spr">24</dd></div>
+                <div><dt>SPD</dt><dd id="enemy-stat-spd">66</dd></div>
+                <div><dt>LUK</dt><dd id="enemy-stat-luk">48</dd></div>
+              </dl>
+
+              <div class="hp-wrap">
+                <div class="hp-meta">
+                  <span>HP</span>
+                  <strong id="enemy-hp-value">1000 / 1000</strong>
+                </div>
+                <div class="hp-bar hp-bar-enemy"><span id="enemy-hp-fill"></span></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article
+          id="main-turn-panel"
+          class="turn-panel"
+          data-turn-nav-trigger="true"
+          role="button"
+          tabindex="0"
+          aria-label="神のサイコロへ移動"
+        >
+          <p class="turn-kicker">PHASE 1</p>
+          <p class="turn-value" id="turn-value">1</p>
+          <p class="turn-rule" id="turn-rule"></p>
+        </article>
+      </section>
+
+      <section class="panel board-panel" aria-label="盤面">
+        <article class="combatant player board-player-status">
+          <p class="combatant-label">player</p>
+          <h2>神域連合</h2>
+          <p class="morale-value">
+            <span>士気: <strong id="player-morale-value">50 / 1000</strong></span>
+            <span>MP: <strong id="player-mp-value">50</strong></span>
+          </p>
+          <div class="hp-wrap">
+            <div class="hp-meta">
+              <span>HP</span>
+              <strong id="player-hp-value">3000 / 3000</strong>
+            </div>
+            <div class="hp-bar hp-bar-player"><span id="player-hp-fill"></span></div>
+          </div>
+        </article>
+
+        <div class="panel-head">
+          <h2>カード盤面</h2>
+        </div>
+
+        <div class="board-row" data-row="1">
+          <article class="board-slot" data-slot="leftWing">
+            <p class="slot-role">左翼</p>
+            <div class="slot-card"></div>
+          </article>
+          <article class="board-slot" data-slot="front">
+            <p class="slot-role">前衛</p>
+            <div class="slot-card"></div>
+          </article>
+          <article class="board-slot" data-slot="rightWing">
+            <p class="slot-role">右翼</p>
+            <div class="slot-card"></div>
+          </article>
+        </div>
+
+        <div class="board-row" data-row="2">
+          <article class="board-slot" data-slot="rear">
+            <p class="slot-role">後衛</p>
+            <div class="slot-card"></div>
+          </article>
+          <article class="board-slot" data-slot="general">
+            <p class="slot-role">大将</p>
+            <div class="slot-card"></div>
+          </article>
+          <article class="board-slot" data-slot="strategist">
+            <p class="slot-role">軍師</p>
+            <div class="slot-card"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="panel command-panel" aria-label="操作">
+        <div class="panel-head">
+          <h2>操作</h2>
+        </div>
+
+        <div class="command-buttons">
+          <button id="draw-btn" class="btn btn-primary">神のサイコロで4枚ドロー</button>
+        </div>
+
+        <div class="resource-grid" id="resource-grid"></div>
+
+        <section class="ability-info-panel" aria-label="カード特殊能力情報">
+          <h3>カードステータス表示</h3>
+          <p id="ability-info-placeholder">盤面カードにカーソルを合わせるとステータスを表示</p>
+          <div id="ability-info-detail" class="ability-info-detail" hidden></div>
+        </section>
+      </section>
+
+      <section class="panel log-panel" aria-label="ログ">
+        <div class="panel-head">
+          <h2>バトルログ</h2>
+        </div>
+        <ul id="log-list" class="log-list"></ul>
+      </section>
+    </main>
+
+    <button
+      id="floating-log"
+      class="floating-log"
+      type="button"
+      hidden
+      aria-live="polite"
+      aria-atomic="true"
+      title="クリックで閉じる"
+    ></button>
+
+    <section id="draw-modal" class="draw-modal hidden" aria-hidden="true">
+      <div class="draw-modal-backdrop" aria-hidden="true"></div>
+      <article class="draw-window" role="dialog" aria-modal="true" aria-label="ドロー結果">
+        <header class="draw-window-head">
+          <button id="draw-shuffle-btn" class="btn btn-ghost draw-shuffle-btn" type="button">4枚シャッフル</button>
+          <p class="draw-kicker">divine draw</p>
+          <h2>神のサイコロで引かれた4枚</h2>
+          <p>1枚クリックで選択確定。残りは手札として保持される。</p>
+        </header>
+        <section class="draw-status-summary" aria-label="ドロー中ステータス">
+          <article
+            id="draw-turn-chip"
+            class="draw-status-chip turn"
+            data-turn-nav-trigger="true"
+            role="button"
+            tabindex="0"
+            aria-label="神のサイコロへ移動"
+          >
+            <p class="draw-status-label">P1 TURN</p>
+            <p id="draw-turn-value" class="draw-status-value">1</p>
+          </article>
+          <article class="draw-status-chip enemy">
+            <p class="draw-status-label">敵HP</p>
+            <p id="draw-enemy-hp-value" class="draw-status-value">0 / 0</p>
+          </article>
+          <article class="draw-status-chip player">
+            <p class="draw-status-label">味方HP</p>
+            <p id="draw-player-hp-value" class="draw-status-value">0 / 0</p>
+          </article>
+          <article class="draw-status-chip player">
+            <p class="draw-status-label">味方MP</p>
+            <p id="draw-player-mp-value" class="draw-status-value">0 / 500</p>
+          </article>
+          <article class="draw-status-chip player">
+            <p class="draw-status-label">士気</p>
+            <p id="draw-player-morale-value" class="draw-status-value">0 / 1000</p>
+          </article>
+        </section>
+        <div id="modal-cards" class="modal-cards"></div>
+      </article>
+    </section>
+
+    <section id="guard-choice-panel" class="guard-choice-modal hidden" aria-hidden="true">
+      <div class="guard-choice-backdrop" aria-hidden="true"></div>
+      <article class="guard-choice-window" role="dialog" aria-modal="true" aria-label="先読み防御選択">
+        <h3 id="guard-choice-title">先読み防御</h3>
+        <p id="guard-choice-text">物理防御か魔法防御を選択</p>
+        <p id="guard-choice-hint" class="guard-choice-hint" hidden></p>
+        <div class="guard-choice-buttons" id="guard-choice-buttons">
+          <button id="guard-physical-btn" class="btn btn-ghost">物理防御</button>
+          <button id="guard-magic-btn" class="btn btn-ghost">魔法防御</button>
+          <button id="guard-ancient-btn" class="btn btn-ghost" hidden>古代魔法</button>
+          <button id="guard-fourth-btn" class="btn btn-ghost" hidden>神聖魔法剣</button>
+        </div>
+      </article>
+    </section>
+
+    <audio id="bgm-audio" src="1.image/music/main.mp3" preload="auto" loop></audio>
+
+    <template id="mini-card-template">
+      <article class="mini-card">
+        <header class="mini-card-head">
+          <h3></h3>
+          <p class="meta"></p>
+        </header>
+        <p class="tagline"></p>
+        <dl class="stats"></dl>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
