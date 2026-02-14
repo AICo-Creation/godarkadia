@@ -427,7 +427,7 @@ const PLAYER_REAR_REMOTE_MAGIC_MAG_BASE = 70;
 const PLAYER_REAR_REMOTE_MAGIC_DAMAGE_RATE = 11;
 const PLAYER_REAR_REMOTE_MAGIC_MP_COST = 5;
 const PLAYER_REAR_HEAL_PRIEST_BOOST_RATE = 1.5;
-const PLAYER_TRICKSTER_ALL_JOB_RATE = 0.3;
+const PLAYER_TRICKSTER_ALL_JOB_RATE = 0.1;
 const PLAYER_TREASURE_DROP_BASE_RATE = 0.5;
 const PLAYER_TREASURE_DROP_TRICKSTER_RATE = 1;
 const PLAYER_TREASURE_DROP_BASE_HEAL = 300;
@@ -441,15 +441,16 @@ const PLAYER_MAGIC_BARRIER_DAMAGE_RATE = 0.8;
 const PLAYER_HOLY_MAGIC_BARRIER_DAMAGE_RATE = 0.6;
 const PLAYER_IRON_WALL_DAMAGE_RATE = 0.9;
 const PLAYER_FRONT_GUARDIAN_PHYSICAL_DAMAGE_RATE = 0.9;
-const PLAYER_MORALE_BASE_DECAY = 5;
-const PLAYER_MORALE_GENERAL_BONUS = 10;
-const PLAYER_MORALE_LEADER_BONUS = 5;
+const PLAYER_FRONT_MORALE_GAIN = 5;
+const PLAYER_FRONT_LEADER_MORALE_GAIN = 10;
+const PLAYER_GENERAL_MORALE_GAIN = 5;
+const PLAYER_GENERAL_LEADER_MORALE_GAIN = 10;
 const PLAYER_PHYSICAL_CRIT_BONUS_ON_5TH_TURN = 1.2;
 const BATTLE_TURNS_PER_PHASE = 6;
 const BATTLE_PHASE_LIMIT = 3;
 const PLAYER_LIFE_BURST_TRIGGER_ATK = 95;
-const PLAYER_LIFE_BURST_TRIGGER_HP_DIVISOR = 3;
-const PLAYER_LIFE_BURST_MISSING_HP_DIVISOR = 3;
+const PLAYER_LIFE_BURST_TRIGGER_HP_DIVISOR = 5;
+const PLAYER_LIFE_BURST_MISSING_HP_DIVISOR = 2;
 const PLAYER_GALE_FORMATION_TRIGGER_SPD = 90;
 const PLAYER_FRONT_SWORDIAN_COUNTER_TRIGGER_RATE = 0.5;
 const PLAYER_FOLLOW_UP_EFFECT_DELAY_MS = 760;
@@ -476,10 +477,13 @@ const PLAYER_AURUM_CERISE_CHAIN_EXTRA_HIT_RATE = 0.5;
 const PLAYER_JEFFREY_CERISE_CHAIN_EXTRA_HIT_RATE = 0.5;
 const PLAYER_AURUM_CERISE_CHAIN_MAX_HITS = 3;
 const PLAYER_CERISE_DUAL_SUPPORT_CHAIN_MAX_HITS = 4;
+const PLAYER_LANCELATE_EVASION_TRIGGER_RATE = 0.5;
 const LEADER_CARD_IDS = new Set(["zeolite", "izaya", "ariana"]);
 const ENEMY_PLAYER_ATTACK_HALF_RATE = 0.5;
 const ENEMY_PHYSICAL_ATTACK_HALF_BOSS_ID = "vald";
 const ENEMY_MAGIC_ATTACK_HALF_BOSS_ID = "izel";
+const ENEMY_AMBUSH_ASSAULT_TRIGGER_RATE = 1 / 3;
+const ENEMY_AMBUSH_ASSAULT_DAMAGE_RATE = 1.5;
 const DRAW_TO_BOARD_SCROLL_DELAY_MS = 70;
 const PRE_ATTACK_PREVIEW_STEP_MS = 180;
 const PRE_ATTACK_PREVIEW_FINAL_HOLD_MS = 240;
@@ -1497,6 +1501,17 @@ function scrollToDivineDiceNode() {
   flashElement(drawButton, "draw-btn-guide-flash", 820);
 }
 
+function queueScrollToDivineDiceNodeAfterEnemyTurn() {
+  window.requestAnimationFrame(() => {
+    if (state.battleEnded || state.enemyTransitioning) return;
+    if (state.pendingBoardRecycle) return;
+    if (state.pendingEnemyAction || state.pendingEnemyActionAwaitingConfirm || state.pendingEnemyActionAwaitingResolve) return;
+    if (hasPendingActivationLog() || state.pendingPostActivationPlayerAction || state.pendingLifeBurstSequence) return;
+    if (state.drawModalOpen || state.pendingMagicChoice) return;
+    scrollToDivineDiceNode();
+  });
+}
+
 function clearTurnDisplaySyncTimer() {
   window.clearTimeout(turnDisplaySyncTimer);
   turnDisplaySyncTimer = null;
@@ -2051,7 +2066,8 @@ function calculateLegionTotalBurstDamage() {
   const sprTotal = Math.max(0, Math.floor(totals.spr));
   const spdTotal = Math.max(0, Math.floor(totals.spd));
   const lukTotal = Math.max(0, Math.floor(totals.luk));
-  const damage = Math.max(0, atkTotal + defTotal + magTotal + sprTotal + spdTotal + lukTotal);
+  const moraleBonus = Math.max(0, Math.floor(state.morale * 0.5));
+  const damage = Math.max(0, atkTotal + defTotal + magTotal + sprTotal + spdTotal + lukTotal + moraleBonus);
   return {
     damage,
     atkTotal,
@@ -2060,6 +2076,7 @@ function calculateLegionTotalBurstDamage() {
     sprTotal,
     spdTotal,
     lukTotal,
+    moraleBonus,
     breakdown: {
       type: "legionTotal",
       atkTotal,
@@ -2068,6 +2085,7 @@ function calculateLegionTotalBurstDamage() {
       sprTotal,
       spdTotal,
       lukTotal,
+      moraleBonus,
       finalDamage: damage,
     },
   };
@@ -2091,6 +2109,7 @@ function resolveFinalLegionTotalBurst(attacker, slotId, currentEnemy) {
   addActivationLog(
     `軍団攻撃発動: 合計ATK ${legionTotalBurst.atkTotal} + DEF ${legionTotalBurst.defTotal} + MAG ${legionTotalBurst.magTotal}` +
       ` + SPR ${legionTotalBurst.sprTotal} + SPD ${legionTotalBurst.spdTotal} + LUK ${legionTotalBurst.lukTotal}` +
+      ` + 士気補正${legionTotalBurst.moraleBonus}` +
       ` = ${legionTotalBurst.damage} ダメージ。敵HP ${nextEnemyHp}/${currentEnemy.hp}.`,
     "good"
   );
@@ -2518,7 +2537,7 @@ function chooseMagicUsage(choice) {
         actualAttackType = "ancientMagic";
         addActivationLog("宇宙に瞬く星々たちよ　我に力を与えたまえ", "crit");
         addActivationLog(
-          `軍師戦術: 古代魔法を発動(MP${PLAYER_MP_ANCIENT_MAGIC_COST}消費)。魔法威力 x${formatRateLabel(getCurrentAncientMagicAttackRate())} / 防御無視。`,
+          `軍師戦術: 古代魔法を発動(MP${PLAYER_MP_ANCIENT_MAGIC_COST}消費)。魔法威力 x${formatRateLabel(getCurrentAncientMagicAttackRate())} / 敵DEFで軽減。`,
           "crit"
         );
         deferAncientActionUntilLogConfirm = true;
@@ -3057,7 +3076,7 @@ function resolvePendingPostActivationPlayerAction() {
 
     if (state.enemyHp <= 0) {
       onEnemyDefeated(currentEnemy, {
-        finalAttackMessage: `${attacker.name} の全軍攻撃で ${legionAttack.damage} ダメージ`,
+        finalAttackMessage: `${attacker.name} の一斉攻撃で ${legionAttack.damage} ダメージ`,
       });
       return true;
     }
@@ -3575,9 +3594,13 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
   if (isCycleTurn(6) && slotId === "general") {
     const legionAttack = calculateLegionAttackDamage(attacker, slotId, currentEnemy);
     const nextEnemyHpAfterLegion = Math.max(0, state.enemyHp - legionAttack.damage);
-    addActivationLog("全軍突撃！我に続け！", "crit");
+    const leaderBoostText = legionAttack.leaderBoostApplied
+      ? ` + リーダー倍率x${formatRateLabel(legionAttack.leaderBoostRate)}`
+      : "";
+    addActivationLog("一斉攻撃！我に続け！", "crit");
     addActivationLog(
-      `全軍攻撃発動: 物理${legionAttack.physicalDamage} + 魔法${legionAttack.magicDamage} + 士気${legionAttack.moraleBonus} = ` +
+      `一斉攻撃発動: 物理${legionAttack.physicalDamage} + 魔法${legionAttack.magicDamage} + 士気${legionAttack.moraleBonus}` +
+        `${leaderBoostText} = ` +
         `${legionAttack.damage} ダメージ。敵HP ${nextEnemyHpAfterLegion}/${currentEnemy.hp}.`,
       "good"
     );
@@ -3634,7 +3657,7 @@ function calculateAttackDamageByType(card, slotId, attackType, enemy) {
 }
 
 function getAttackLabelByType(type) {
-  if (type === "legion") return "全軍攻撃";
+  if (type === "legion") return "一斉攻撃";
   if (type === "spellblade") return "神聖魔法剣";
   if (type === "magicSword") return "魔法剣";
   if (type === "lifeBurst") return "ライフバースト";
@@ -3917,6 +3940,20 @@ function parseJobTags(jobValue) {
     .filter(Boolean);
 }
 
+function hasNativeJobTag(jobOrCard, jobName) {
+  if (!jobOrCard || typeof jobName !== "string") return false;
+  if (typeof jobOrCard === "string") {
+    if (jobOrCard === jobName) return true;
+    return parseJobTags(jobOrCard).includes(jobName);
+  }
+  if (jobOrCard.job === jobName) return true;
+  return parseJobTags(jobOrCard.job).includes(jobName);
+}
+
+function hasAnyNativeJobTag(jobOrCard, jobNames) {
+  return jobNames.some((jobName) => hasNativeJobTag(jobOrCard, jobName));
+}
+
 function getCardCharacterId(card) {
   if (!card) return "";
   if (typeof card.characterId === "string" && card.characterId.trim()) {
@@ -4050,7 +4087,11 @@ function resolveTricksterAllJobEffectsForTurn() {
   tricksters.forEach((card) => {
     const active = isTricksterAllJobsActive(card);
     if (!active) return;
-    addActivationLog(`${getCurrentTurnLabel()} 奇策発動(30%): ${card.name}(トリックスター) が全職業に変化。`, "good");
+    addActivationLog(
+      `${getCurrentTurnLabel()} 奇策発動(${Math.round(PLAYER_TRICKSTER_ALL_JOB_RATE * 100)}%): ` +
+        `${card.name}(トリックスター) が全職業に変化。`,
+      "good"
+    );
   });
 }
 
@@ -4094,7 +4135,7 @@ function canUseAncientMagic(card) {
   return Boolean(
     card &&
       normalizeBattleTurn(state.turn) >= PLAYER_ANCIENT_MAGIC_AVAILABLE_TURN &&
-      isWizardLike(card) &&
+      hasAnyNativeJobTag(card, ["ウィザード", "ビショップ"]) &&
       card.stats &&
       card.stats.mag >= 90
   );
@@ -4105,7 +4146,7 @@ function canUseMagicKnightMagicSword(card) {
 }
 
 function canUseSpellblade(card) {
-  return Boolean(card && hasAnyJobTag(card, ["ソーディアン", "マジックナイト", "グラディエーター"]));
+  return Boolean(card && hasAnyNativeJobTag(card, ["ソーディアン", "マジックナイト", "グラディエーター"]));
 }
 
 function canUseGeneralCommandSpellblade(card) {
@@ -4119,7 +4160,7 @@ function canUseHolyRearHeal(card) {
     card &&
       (turnConditionMet || specialUnlockMet) &&
       card.stats &&
-      hasJobTag(card, "プリースト") &&
+      hasNativeJobTag(card, "プリースト") &&
       card.stats.spr >= PLAYER_REAR_HOLY_HEAL_TRIGGER_SPR
   );
 }
@@ -4136,8 +4177,20 @@ function canTriggerLancelatePreemptive(card) {
   return Boolean(
     card &&
       card.id === PLAYER_LANCELATE_PREEMPTIVE_CARD_ID &&
-      normalizeBattlePhase(state.phase) === 1 &&
       isCycleTurn(1)
+  );
+}
+
+function canTriggerLancelateEvasion(enemyAction, enemy) {
+  return Boolean(
+    enemyAction &&
+      enemy &&
+      enemy.stats &&
+      isCycleTurn(1) &&
+      enemyAction.targetCard &&
+      enemyAction.targetCard.id === PLAYER_LANCELATE_PREEMPTIVE_CARD_ID &&
+      enemyAction.targetCard.stats &&
+      enemyAction.targetCard.stats.spd > enemy.stats.spd
   );
 }
 
@@ -4158,7 +4211,7 @@ function canTriggerLifeBurst(card, slotId) {
     card &&
       card.stats &&
       (slotId === "front" || slotId === "leftWing" || slotId === "rightWing") &&
-      hasJobTag(card, "ベルセルク") &&
+      hasNativeJobTag(card, "ベルセルク") &&
       card.stats.atk >= PLAYER_LIFE_BURST_TRIGGER_ATK &&
       state.playerHp <= lifeBurstHpThreshold
   );
@@ -4648,6 +4701,8 @@ function previewEnemyAction(enemyAction, guardChoice = null) {
   if (!enemyAction) return;
 
   let damage = enemyAction.damage;
+  let assaultBonus = 0;
+  let lancelateEvasionTriggered = false;
   const enemyAttackLabel = enemyAction.attackType === "magic" ? "魔法" : "物理";
   const choiceLabel = guardChoice === "magic" ? "魔法防御" : "物理防御";
   const guarded = guardChoice && guardChoice === enemyAction.attackType;
@@ -4676,6 +4731,17 @@ function previewEnemyAction(enemyAction, guardChoice = null) {
     damage = Math.max(0, damage - ironWallFormation.totalDef);
     ironWallReduced = beforeReduction - damage;
   }
+  if (enemyAction.assaultTriggered) {
+    const beforeAssault = damage;
+    damage = Math.max(0, Math.floor(damage * ENEMY_AMBUSH_ASSAULT_DAMAGE_RATE));
+    assaultBonus = Math.max(0, damage - beforeAssault);
+  }
+  const currentEnemy = getCurrentEnemy();
+  if (canTriggerLancelateEvasion(enemyAction, currentEnemy) && Math.random() < PLAYER_LANCELATE_EVASION_TRIGGER_RATE) {
+    damage = 0;
+    assaultBonus = 0;
+    lancelateEvasionTriggered = true;
+  }
 
   return {
     damage,
@@ -4687,6 +4753,9 @@ function previewEnemyAction(enemyAction, guardChoice = null) {
     frontGuardianReduced,
     ironWallFormation,
     ironWallReduced,
+    assaultTriggered: Boolean(enemyAction.assaultTriggered),
+    assaultBonus,
+    lancelateEvasionTriggered,
     nextPlayerHp: Math.max(0, state.playerHp - damage),
   };
 }
@@ -4743,12 +4812,26 @@ function queueEnemyActionConfirmation(enemyAction, guardChoice = null, options =
       "good"
     );
   }
+  if (preview.assaultTriggered) {
+    addActivationLog(
+      `敵の強襲発動: 前衛不在を突かれ、被ダメージがx${formatRateLabel(ENEMY_AMBUSH_ASSAULT_DAMAGE_RATE)}。`,
+      "warn"
+    );
+  }
+  if (preview.lancelateEvasionTriggered) {
+    addActivationLog(
+      `${getCurrentTurnLabel()} 光速回避: ランセレイトが敵の攻撃を見切り、ダメージを0にした。`,
+      "good"
+    );
+  }
   addLog(
     `敵の${preview.enemyAttackLabel}反撃: ${SLOT_BY_ID[enemyAction.targetSlot].label}(${enemyAction.targetCard.name})に` +
       ` ${preview.damage} ダメージ。味方HP ${preview.nextPlayerHp}/${getPlayerMaxHp()}.` +
       `${enemyAction.rangedMitigationApplied ? " 遠隔攻撃効果で被ダメージ30%カット。" : ""}` +
       `${preview.frontGuardianReduced > 0 ? ` 前衛守護で-${preview.frontGuardianReduced}軽減。` : ""}` +
-      `${preview.ironWallReduced > 0 ? ` 鉄壁の陣で-${preview.ironWallReduced}軽減。` : ""}`
+      `${preview.ironWallReduced > 0 ? ` 鉄壁の陣で-${preview.ironWallReduced}軽減。` : ""}` +
+      `${preview.assaultBonus > 0 ? ` 強襲で+${preview.assaultBonus}増幅。` : ""}` +
+      `${preview.lancelateEvasionTriggered ? " ランセレイトの回避で無効化。" : ""}`
   );
   return true;
 }
@@ -4790,6 +4873,8 @@ function applyEnemyAction(enemyAction, guardChoice = null, options = {}) {
   } = options;
 
   let damage = precomputedDamage ?? enemyAction.damage;
+  let assaultBonus = 0;
+  let lancelateEvasionTriggered = false;
   const enemyAttackLabel = enemyAction.attackType === "magic" ? "魔法" : "物理";
   const choiceLabel = guardChoice === "magic" ? "魔法防御" : "物理防御";
   const guarded = guardChoice && guardChoice === enemyAction.attackType;
@@ -4819,6 +4904,17 @@ function applyEnemyAction(enemyAction, guardChoice = null, options = {}) {
       damage = Math.max(0, Math.floor(damage * PLAYER_IRON_WALL_DAMAGE_RATE));
       damage = Math.max(0, damage - ironWallFormation.totalDef);
       ironWallReduced = beforeReduction - damage;
+    }
+    if (enemyAction.assaultTriggered) {
+      const beforeAssault = damage;
+      damage = Math.max(0, Math.floor(damage * ENEMY_AMBUSH_ASSAULT_DAMAGE_RATE));
+      assaultBonus = Math.max(0, damage - beforeAssault);
+    }
+    const currentEnemy = getCurrentEnemy();
+    if (canTriggerLancelateEvasion(enemyAction, currentEnemy) && Math.random() < PLAYER_LANCELATE_EVASION_TRIGGER_RATE) {
+      damage = 0;
+      assaultBonus = 0;
+      lancelateEvasionTriggered = true;
     }
   }
   const nextPlayerHp = Math.max(0, state.playerHp - damage);
@@ -4866,12 +4962,26 @@ function applyEnemyAction(enemyAction, guardChoice = null, options = {}) {
         "good"
       );
     }
+    if (enemyAction.assaultTriggered) {
+      addActivationLog(
+        `敵の強襲発動: 前衛不在を突かれ、被ダメージがx${formatRateLabel(ENEMY_AMBUSH_ASSAULT_DAMAGE_RATE)}。`,
+        "warn"
+      );
+    }
+    if (lancelateEvasionTriggered) {
+      addActivationLog(
+        `${getCurrentTurnLabel()} 光速回避: ランセレイトが敵の攻撃を見切り、ダメージを0にした。`,
+        "good"
+      );
+    }
     addLog(
       `敵の${enemyAttackLabel}反撃: ${SLOT_BY_ID[enemyAction.targetSlot].label}(${enemyAction.targetCard.name})に` +
         ` ${damage} ダメージ。味方HP ${finalPlayerHp}/${getPlayerMaxHp()}.` +
         `${enemyAction.rangedMitigationApplied ? " 遠隔攻撃効果で被ダメージ30%カット。" : ""}` +
         `${frontGuardianReduced > 0 ? ` 前衛守護で-${frontGuardianReduced}軽減。` : ""}` +
-        `${ironWallReduced > 0 ? ` 鉄壁の陣で-${ironWallReduced}軽減。` : ""}`
+        `${ironWallReduced > 0 ? ` 鉄壁の陣で-${ironWallReduced}軽減。` : ""}` +
+        `${assaultBonus > 0 ? ` 強襲で+${assaultBonus}増幅。` : ""}` +
+        `${lancelateEvasionTriggered ? " ランセレイトの回避で無効化。" : ""}`
     );
   }
   state.playerHp = finalPlayerHp;
@@ -4946,6 +5056,7 @@ function endTurnAndPrepareNext() {
     queueBoardRecycleAfterEnemyHit();
   }
   scheduleDisplayedTurnAfterCombat(state.turn, state.phase);
+  queueScrollToDivineDiceNodeAfterEnemyTurn();
 }
 
 function resolveRearHeal(card, options = {}) {
@@ -5249,6 +5360,11 @@ function queueBoardRecycleAfterEnemyHit() {
   addLog("敵の攻撃後、画面クリックで陣形を再編します。", "warn");
 }
 
+function canTriggerEnemyAmbushAssault() {
+  if (state.board.front) return false;
+  return Math.random() < ENEMY_AMBUSH_ASSAULT_TRIGGER_RATE;
+}
+
 function resolveEnemyCounter(enemy, sourceCard = null) {
   const targetSlot = pickEnemyTargetSlot();
   if (!targetSlot) return null;
@@ -5256,6 +5372,7 @@ function resolveEnemyCounter(enemy, sourceCard = null) {
   const targetCard = state.board[targetSlot];
   const attackType = getEnemyAttackType();
   const result = calculateEnemyDamage(targetCard, targetSlot, attackType, enemy, { sourceCard });
+  const assaultTriggered = canTriggerEnemyAmbushAssault();
 
   return {
     attackType,
@@ -5264,6 +5381,7 @@ function resolveEnemyCounter(enemy, sourceCard = null) {
     damage: result.damage,
     guardTriggered: result.guardTriggered,
     rangedMitigationApplied: result.rangedMitigationApplied,
+    assaultTriggered,
   };
 }
 
@@ -5351,7 +5469,7 @@ function calculatePlayerDamage(card, slotId, attackType, enemy, options = {}) {
       ? card.stats.mag * 2.05 + card.stats.luk * 0.35
       : card.stats.atk * 2.05 + card.stats.spd * 0.28;
 
-  const defenseIgnored = isMagicAttack || forceIgnoreDefense;
+  const defenseIgnored = attackType === "magic" || forceIgnoreDefense;
   const enemyGuard = defenseIgnored ? 0 : enemy.stats.def * 0.86;
 
   let critical = false;
@@ -5436,8 +5554,9 @@ function calculatePlayerDamage(card, slotId, attackType, enemy, options = {}) {
 }
 
 function getOutgoingDamageMoraleRate(attackType) {
-  if (state.morale >= PLAYER_MORALE_MAX) return 1.2;
-  if (state.morale >= 75) return 1.1;
+  if (state.morale >= 500) return 1.3;
+  if (state.morale >= 200) return 1.2;
+  if (state.morale >= 100) return 1.1;
   if ((attackType === "physical" || attackType === "berserkerRage") && state.morale <= 25) return 0.5;
   return 1;
 }
@@ -5486,14 +5605,15 @@ function getMpRecoveryForTurnEnd() {
 }
 
 function updateMoraleForTurnEnd() {
+  const frontCard = state.board.front;
   const generalCard = state.board.general;
-  let moraleDelta = -PLAYER_MORALE_BASE_DECAY;
+  let moraleDelta = 0;
 
+  if (frontCard) {
+    moraleDelta += isLeaderCard(frontCard) ? PLAYER_FRONT_LEADER_MORALE_GAIN : PLAYER_FRONT_MORALE_GAIN;
+  }
   if (generalCard) {
-    moraleDelta += PLAYER_MORALE_GENERAL_BONUS;
-    if (isLeaderCard(generalCard)) {
-      moraleDelta += PLAYER_MORALE_LEADER_BONUS;
-    }
+    moraleDelta += isLeaderCard(generalCard) ? PLAYER_GENERAL_LEADER_MORALE_GAIN : PLAYER_GENERAL_MORALE_GAIN;
   }
 
   state.morale = Math.max(
@@ -5528,17 +5648,25 @@ function calculateLegionAttackDamage(card, slotId, enemy) {
   const magicDamage = magicDamageResult.damage;
   const moraleBonus = Math.max(0, Math.floor(state.morale));
   const magicPortion = magicDamage;
-  const damage = Math.max(1, Math.floor(physicalDamage + magicDamage + moraleBonus));
+  const baseDamage = Math.max(1, Math.floor(physicalDamage + magicDamage + moraleBonus));
+  const leaderBoostApplied = isLeaderCard(card);
+  const leaderBoostRate = leaderBoostApplied ? 2 : 1;
+  const damage = Math.max(1, Math.floor(baseDamage * leaderBoostRate));
   return {
     damage,
     physicalDamage,
     magicDamage,
     moraleBonus,
+    leaderBoostApplied,
+    leaderBoostRate,
     breakdown: {
       type: "legion",
       physicalDamage,
       magicPortion,
       moraleBonus,
+      leaderBoostApplied,
+      leaderBoostRate,
+      afterLeaderBoostDamage: damage,
       finalDamage: damage,
     },
   };
@@ -7153,13 +7281,16 @@ function buildPreAttackDamageSteps(finalDamage, breakdown = null) {
     const sprTotal = Math.max(0, Math.floor(breakdown.sprTotal ?? 0));
     const spdTotal = Math.max(0, Math.floor(breakdown.spdTotal ?? 0));
     const lukTotal = Math.max(0, Math.floor(breakdown.lukTotal ?? 0));
+    const moraleBonus = Math.max(0, Math.floor(breakdown.moraleBonus ?? 0));
     const groupedTotal = Math.max(0, atkTotal + defTotal + magTotal + sprTotal + spdTotal + lukTotal);
+    const totalWithMorale = Math.max(0, groupedTotal + moraleBonus);
     return [
       { label: `ATK+DEF (${atkTotal}+${defTotal})`, value: atkTotal + defTotal },
       { label: `MAG+SPR (${magTotal}+${sprTotal})`, value: atkTotal + defTotal + magTotal + sprTotal },
       { label: `SPD+LUK (${spdTotal}+${lukTotal})`, value: groupedTotal },
-      { label: "軍団総攻撃", value: Math.max(1, groupedTotal) },
-      { label: "FINAL DAMAGE", value: Math.max(1, groupedTotal), final: true },
+      { label: `士気加算 +${moraleBonus}`, value: Math.max(1, totalWithMorale) },
+      { label: "軍団総攻撃", value: Math.max(1, totalWithMorale) },
+      { label: "FINAL DAMAGE", value: Math.max(1, totalWithMorale), final: true },
     ];
   }
 
@@ -7310,10 +7441,20 @@ function buildPreAttackDamageSteps(finalDamage, breakdown = null) {
     const magicPortion = Math.max(0, Math.floor(breakdown.magicPortion ?? 0));
     const moraleBonus = Math.max(0, Math.floor(breakdown.moraleBonus ?? 0));
     const combinedDamage = Math.max(1, Math.floor(physicalDamage + magicPortion));
+    const withMoraleDamage = Math.max(1, Math.floor(combinedDamage + moraleBonus));
+    const leaderBoostRate = Math.max(1, Number(breakdown.leaderBoostRate ?? 1));
+    const leaderBoostApplied = Boolean(breakdown.leaderBoostApplied && leaderBoostRate > 1);
+    const afterLeaderBoostDamage = Math.max(
+      1,
+      Math.floor(breakdown.afterLeaderBoostDamage ?? withMoraleDamage * leaderBoostRate)
+    );
     return [
       { label: "基本(物理)", value: physicalDamage },
       { label: `魔法加算 +${magicPortion}`, value: combinedDamage },
-      { label: `士気加算 +${moraleBonus}`, value: damage },
+      { label: `士気加算 +${moraleBonus}`, value: withMoraleDamage },
+      ...(leaderBoostApplied
+        ? [{ label: `リーダー倍率 x${formatRateLabel(leaderBoostRate)}`, value: afterLeaderBoostDamage }]
+        : []),
       { label: "FINAL DAMAGE", value: damage, final: true },
     ];
   }
@@ -8022,12 +8163,12 @@ function renderGuardChoice() {
       } else if (!ancientMpEnough) {
         guardChoiceHintEl.textContent =
           `現在MP: ${state.mp}/${PLAYER_MP_MAX} / 物理(0)・魔法(MP${PLAYER_MP_SPELL_COST}, x${formatRateLabel(getCurrentMagicAttackRate())}, 防御無視)・` +
-          `古代魔法(MP${PLAYER_MP_ANCIENT_MAGIC_COST}, x${formatRateLabel(getCurrentAncientMagicAttackRate())}, 防御無視 / フェーズ内${PLAYER_ANCIENT_MAGIC_AVAILABLE_TURN}ターン目以降)` +
+          `古代魔法(MP${PLAYER_MP_ANCIENT_MAGIC_COST}, x${formatRateLabel(getCurrentAncientMagicAttackRate())}, 敵DEFで軽減 / フェーズ内${PLAYER_ANCIENT_MAGIC_AVAILABLE_TURN}ターン目以降)` +
           `${magicKnightMagicSwordHint} / 古代魔法はMP不足`;
       } else {
         guardChoiceHintEl.textContent =
           `現在MP: ${state.mp}/${PLAYER_MP_MAX} / 物理(0)・魔法(MP${PLAYER_MP_SPELL_COST}, x${formatRateLabel(getCurrentMagicAttackRate())}, 防御無視)・` +
-          `古代魔法(MP${PLAYER_MP_ANCIENT_MAGIC_COST}, x${formatRateLabel(getCurrentAncientMagicAttackRate())}, 防御無視 / フェーズ内${PLAYER_ANCIENT_MAGIC_AVAILABLE_TURN}ターン目以降)` +
+          `古代魔法(MP${PLAYER_MP_ANCIENT_MAGIC_COST}, x${formatRateLabel(getCurrentAncientMagicAttackRate())}, 敵DEFで軽減 / フェーズ内${PLAYER_ANCIENT_MAGIC_AVAILABLE_TURN}ターン目以降)` +
           `${magicKnightMagicSwordHint}`;
       }
       guardChoiceHintEl.hidden = false;
