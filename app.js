@@ -445,6 +445,7 @@ const PLAYER_FRONT_MORALE_GAIN = 5;
 const PLAYER_FRONT_LEADER_MORALE_GAIN = 10;
 const PLAYER_GENERAL_MORALE_GAIN = 5;
 const PLAYER_GENERAL_LEADER_MORALE_GAIN = 10;
+const PLAYER_TURN4_LEGION_HEAL_BASE = 200;
 const PLAYER_PHYSICAL_CRIT_BONUS_ON_5TH_TURN = 1.2;
 const BATTLE_TURNS_PER_PHASE = 6;
 const BATTLE_PHASE_LIMIT = 3;
@@ -452,6 +453,8 @@ const PLAYER_LIFE_BURST_TRIGGER_ATK = 95;
 const PLAYER_LIFE_BURST_TRIGGER_HP_DIVISOR = 5;
 const PLAYER_LIFE_BURST_MISSING_HP_DIVISOR = 2;
 const PLAYER_GALE_FORMATION_TRIGGER_SPD = 90;
+const PLAYER_GALE_FORMATION_BASE_DAMAGE = 200;
+const PLAYER_REVERSAL_FORMATION_BASE_DAMAGE = 200;
 const PLAYER_FRONT_SWORDIAN_COUNTER_TRIGGER_RATE = 0.5;
 const PLAYER_FOLLOW_UP_EFFECT_DELAY_MS = 760;
 const LUNA_STAR_WISDOM_EFFECT_MS = 1600;
@@ -484,6 +487,8 @@ const ENEMY_PHYSICAL_ATTACK_HALF_BOSS_ID = "vald";
 const ENEMY_MAGIC_ATTACK_HALF_BOSS_ID = "izel";
 const ENEMY_AMBUSH_ASSAULT_TRIGGER_RATE = 1 / 3;
 const ENEMY_AMBUSH_ASSAULT_DAMAGE_RATE = 1.5;
+const ENEMY_DARK_ATTACK_TRIGGER_RATE = 1 / 3;
+const ENEMY_DARK_ATTACK_DAMAGE_RATE = 1.2;
 const DRAW_TO_BOARD_SCROLL_DELAY_MS = 70;
 const PRE_ATTACK_PREVIEW_STEP_MS = 180;
 const PRE_ATTACK_PREVIEW_FINAL_HOLD_MS = 240;
@@ -3684,34 +3689,29 @@ function resolveGaleFormation(attacker, slotId, currentEnemy) {
   if (!currentEnemy || state.enemyHp <= 0) return false;
 
   const legionSpdTotal = Math.max(0, Math.floor(getPlayerTotalStats().spd));
-  if (legionSpdTotal <= 0) {
-    addActivationLog(
-      `${getCurrentTurnLabel()} 疾風の陣: ${attacker.name}(SPD ${attacker.stats.spd}) が発動条件を満たしたが、` +
-        `軍団合計SPD ${legionSpdTotal} のため追加ダメージなし。`,
-      "warn"
-    );
-    return false;
-  }
+  const formationDamage = Math.max(1, legionSpdTotal + PLAYER_GALE_FORMATION_BASE_DAMAGE);
 
-  const nextEnemyHp = Math.max(0, state.enemyHp - legionSpdTotal);
+  const nextEnemyHp = Math.max(0, state.enemyHp - formationDamage);
   addActivationLog(
     `${getCurrentTurnLabel()} 疾風の陣発動: ${attacker.name}(SPD ${attacker.stats.spd}) が` +
-      ` 軍団合計SPD ${legionSpdTotal} ダメージ。敵HP ${nextEnemyHp}/${currentEnemy.hp}.`,
+      ` 軍団合計SPD ${legionSpdTotal} + 固定${PLAYER_GALE_FORMATION_BASE_DAMAGE} = ${formationDamage} ダメージ。` +
+      `敵HP ${nextEnemyHp}/${currentEnemy.hp}.`,
     "crit"
   );
   state.enemyHp = nextEnemyHp;
-  playPlayerAttackEffect(attacker, slotId, legionSpdTotal, "gale", false, {
+  playPlayerAttackEffect(attacker, slotId, formationDamage, "gale", false, {
     hitLabel: "GALE",
     breakdown: {
       type: "gale",
       totalSpd: legionSpdTotal,
-      finalDamage: legionSpdTotal,
+      baseBonus: PLAYER_GALE_FORMATION_BASE_DAMAGE,
+      finalDamage: formationDamage,
     },
   });
 
   if (state.enemyHp <= 0) {
     onEnemyDefeated(currentEnemy, {
-      finalAttackMessage: `疾風の陣(${attacker.name})で ${legionSpdTotal} ダメージ`,
+      finalAttackMessage: `疾風の陣(${attacker.name})で ${formationDamage} ダメージ`,
     });
     return true;
   }
@@ -3728,34 +3728,29 @@ function resolveReversalFormation(attacker, slotId, currentEnemy) {
   if (!currentEnemy || state.enemyHp <= 0) return false;
 
   const legionLukTotal = Math.max(0, Math.floor(getPlayerTotalStats().luk));
-  if (legionLukTotal <= 0) {
-    addActivationLog(
-      `${getCurrentTurnLabel()} 逆転の陣: ${attacker.name}(LUK ${attacker.stats.luk}) が発動条件を満たしたが、` +
-        `軍団合計LUK ${legionLukTotal} のため追加ダメージなし。`,
-      "warn"
-    );
-    return false;
-  }
+  const formationDamage = Math.max(1, legionLukTotal + PLAYER_REVERSAL_FORMATION_BASE_DAMAGE);
 
-  const nextEnemyHp = Math.max(0, state.enemyHp - legionLukTotal);
+  const nextEnemyHp = Math.max(0, state.enemyHp - formationDamage);
   addActivationLog(
     `${getCurrentTurnLabel()} 逆転の陣発動: ${attacker.name}(LUK ${attacker.stats.luk}) が` +
-      ` 軍団合計LUK ${legionLukTotal} ダメージ。敵HP ${nextEnemyHp}/${currentEnemy.hp}.`,
+      ` 軍団合計LUK ${legionLukTotal} + 固定${PLAYER_REVERSAL_FORMATION_BASE_DAMAGE}` +
+      ` = ${formationDamage} ダメージ。敵HP ${nextEnemyHp}/${currentEnemy.hp}.`,
     "crit"
   );
   state.enemyHp = nextEnemyHp;
-  playPlayerAttackEffect(attacker, slotId, legionLukTotal, "reversal", false, {
+  playPlayerAttackEffect(attacker, slotId, formationDamage, "reversal", false, {
     hitLabel: "REVERSAL",
     breakdown: {
       type: "reversal",
       totalLuk: legionLukTotal,
-      finalDamage: legionLukTotal,
+      baseBonus: PLAYER_REVERSAL_FORMATION_BASE_DAMAGE,
+      finalDamage: formationDamage,
     },
   });
 
   if (state.enemyHp <= 0) {
     onEnemyDefeated(currentEnemy, {
-      finalAttackMessage: `逆転の陣(${attacker.name})で ${legionLukTotal} ダメージ`,
+      finalAttackMessage: `逆転の陣(${attacker.name})で ${formationDamage} ダメージ`,
     });
     return true;
   }
@@ -3883,20 +3878,15 @@ function getIronWallFormationEffect(attacker) {
 function applyFourthTurnLegionHeal() {
   if (!isFourthTurnActive()) return;
 
-  const legionSprTotal = getPlayerTotalStats().spr;
-  if (legionSprTotal <= 0) {
-    addActivationLog(
-      `${getCurrentTurnLabel()} 軍団回復: 合計SPR ${legionSprTotal} のためHP回復は発生しません。`,
-      "warn"
-    );
-    return;
-  }
+  const legionSprTotal = Math.max(0, Math.floor(getPlayerTotalStats().spr));
+  const healAmount = legionSprTotal + PLAYER_TURN4_LEGION_HEAL_BASE;
 
   const beforeHp = state.playerHp;
-  state.playerHp = Math.min(getPlayerMaxHp(), state.playerHp + legionSprTotal);
+  state.playerHp = Math.min(getPlayerMaxHp(), state.playerHp + healAmount);
   const healed = state.playerHp - beforeHp;
   addActivationLog(
-    `${getCurrentTurnLabel()} 軍団回復: 合計SPR ${legionSprTotal} でHPを${healed}回復。` +
+    `${getCurrentTurnLabel()} 軍団回復: 合計SPR ${legionSprTotal} + 固定${PLAYER_TURN4_LEGION_HEAL_BASE}` +
+      ` = ${healAmount} でHPを${healed}回復。` +
       ` 味方HP ${state.playerHp}/${getPlayerMaxHp()}.`,
     "good"
   );
@@ -4702,8 +4692,9 @@ function previewEnemyAction(enemyAction, guardChoice = null) {
 
   let damage = enemyAction.damage;
   let assaultBonus = 0;
+  let darkAttackBonus = 0;
   let lancelateEvasionTriggered = false;
-  const enemyAttackLabel = enemyAction.attackType === "magic" ? "魔法" : "物理";
+  const enemyAttackLabel = getEnemyCounterAttackLabel(enemyAction);
   const choiceLabel = guardChoice === "magic" ? "魔法防御" : "物理防御";
   const guarded = guardChoice && guardChoice === enemyAction.attackType;
   const barrierEffect = enemyAction.attackType === "magic" ? getActiveMagicBarrierEffect() : null;
@@ -4736,10 +4727,16 @@ function previewEnemyAction(enemyAction, guardChoice = null) {
     damage = Math.max(0, Math.floor(damage * ENEMY_AMBUSH_ASSAULT_DAMAGE_RATE));
     assaultBonus = Math.max(0, damage - beforeAssault);
   }
+  if (enemyAction.darkAttackTriggered) {
+    const beforeDarkAttack = damage;
+    damage = Math.max(0, Math.floor(damage * ENEMY_DARK_ATTACK_DAMAGE_RATE));
+    darkAttackBonus = Math.max(0, damage - beforeDarkAttack);
+  }
   const currentEnemy = getCurrentEnemy();
   if (canTriggerLancelateEvasion(enemyAction, currentEnemy) && Math.random() < PLAYER_LANCELATE_EVASION_TRIGGER_RATE) {
     damage = 0;
     assaultBonus = 0;
+    darkAttackBonus = 0;
     lancelateEvasionTriggered = true;
   }
 
@@ -4755,6 +4752,8 @@ function previewEnemyAction(enemyAction, guardChoice = null) {
     ironWallReduced,
     assaultTriggered: Boolean(enemyAction.assaultTriggered),
     assaultBonus,
+    darkAttackTriggered: Boolean(enemyAction.darkAttackTriggered),
+    darkAttackBonus,
     lancelateEvasionTriggered,
     nextPlayerHp: Math.max(0, state.playerHp - damage),
   };
@@ -4818,6 +4817,13 @@ function queueEnemyActionConfirmation(enemyAction, guardChoice = null, options =
       "warn"
     );
   }
+  if (preview.darkAttackTriggered) {
+    addActivationLog(
+      `敵の暗黒攻撃発動: 敵LUK ${enemyAction.enemyLuk} > 味方LUK ${enemyAction.targetLuk} により` +
+        ` 被ダメージがx${formatRateLabel(ENEMY_DARK_ATTACK_DAMAGE_RATE)}。`,
+      "warn"
+    );
+  }
   if (preview.lancelateEvasionTriggered) {
     addActivationLog(
       `${getCurrentTurnLabel()} 光速回避: ランセレイトが敵の攻撃を見切り、ダメージを0にした。`,
@@ -4831,6 +4837,7 @@ function queueEnemyActionConfirmation(enemyAction, guardChoice = null, options =
       `${preview.frontGuardianReduced > 0 ? ` 前衛守護で-${preview.frontGuardianReduced}軽減。` : ""}` +
       `${preview.ironWallReduced > 0 ? ` 鉄壁の陣で-${preview.ironWallReduced}軽減。` : ""}` +
       `${preview.assaultBonus > 0 ? ` 強襲で+${preview.assaultBonus}増幅。` : ""}` +
+      `${preview.darkAttackBonus > 0 ? ` 暗黒攻撃で+${preview.darkAttackBonus}増幅。` : ""}` +
       `${preview.lancelateEvasionTriggered ? " ランセレイトの回避で無効化。" : ""}`
   );
   return true;
@@ -4874,8 +4881,9 @@ function applyEnemyAction(enemyAction, guardChoice = null, options = {}) {
 
   let damage = precomputedDamage ?? enemyAction.damage;
   let assaultBonus = 0;
+  let darkAttackBonus = 0;
   let lancelateEvasionTriggered = false;
-  const enemyAttackLabel = enemyAction.attackType === "magic" ? "魔法" : "物理";
+  const enemyAttackLabel = getEnemyCounterAttackLabel(enemyAction);
   const choiceLabel = guardChoice === "magic" ? "魔法防御" : "物理防御";
   const guarded = guardChoice && guardChoice === enemyAction.attackType;
   const barrierEffect =
@@ -4910,10 +4918,16 @@ function applyEnemyAction(enemyAction, guardChoice = null, options = {}) {
       damage = Math.max(0, Math.floor(damage * ENEMY_AMBUSH_ASSAULT_DAMAGE_RATE));
       assaultBonus = Math.max(0, damage - beforeAssault);
     }
+    if (enemyAction.darkAttackTriggered) {
+      const beforeDarkAttack = damage;
+      damage = Math.max(0, Math.floor(damage * ENEMY_DARK_ATTACK_DAMAGE_RATE));
+      darkAttackBonus = Math.max(0, damage - beforeDarkAttack);
+    }
     const currentEnemy = getCurrentEnemy();
     if (canTriggerLancelateEvasion(enemyAction, currentEnemy) && Math.random() < PLAYER_LANCELATE_EVASION_TRIGGER_RATE) {
       damage = 0;
       assaultBonus = 0;
+      darkAttackBonus = 0;
       lancelateEvasionTriggered = true;
     }
   }
@@ -4968,6 +4982,13 @@ function applyEnemyAction(enemyAction, guardChoice = null, options = {}) {
         "warn"
       );
     }
+    if (enemyAction.darkAttackTriggered) {
+      addActivationLog(
+        `敵の暗黒攻撃発動: 敵LUK ${enemyAction.enemyLuk} > 味方LUK ${enemyAction.targetLuk} により` +
+          ` 被ダメージがx${formatRateLabel(ENEMY_DARK_ATTACK_DAMAGE_RATE)}。`,
+        "warn"
+      );
+    }
     if (lancelateEvasionTriggered) {
       addActivationLog(
         `${getCurrentTurnLabel()} 光速回避: ランセレイトが敵の攻撃を見切り、ダメージを0にした。`,
@@ -4981,6 +5002,7 @@ function applyEnemyAction(enemyAction, guardChoice = null, options = {}) {
         `${frontGuardianReduced > 0 ? ` 前衛守護で-${frontGuardianReduced}軽減。` : ""}` +
         `${ironWallReduced > 0 ? ` 鉄壁の陣で-${ironWallReduced}軽減。` : ""}` +
         `${assaultBonus > 0 ? ` 強襲で+${assaultBonus}増幅。` : ""}` +
+        `${darkAttackBonus > 0 ? ` 暗黒攻撃で+${darkAttackBonus}増幅。` : ""}` +
         `${lancelateEvasionTriggered ? " ランセレイトの回避で無効化。" : ""}`
     );
   }
@@ -5365,6 +5387,17 @@ function canTriggerEnemyAmbushAssault() {
   return Math.random() < ENEMY_AMBUSH_ASSAULT_TRIGGER_RATE;
 }
 
+function canTriggerEnemyDarkAttack(enemy, targetCard) {
+  if (!enemy || !enemy.stats || !targetCard || !targetCard.stats) return false;
+  if (enemy.stats.luk <= targetCard.stats.luk) return false;
+  return Math.random() < ENEMY_DARK_ATTACK_TRIGGER_RATE;
+}
+
+function getEnemyCounterAttackLabel(enemyAction) {
+  const baseLabel = enemyAction?.attackType === "magic" ? "魔法" : "物理";
+  return enemyAction?.darkAttackTriggered ? `暗黒${baseLabel}` : baseLabel;
+}
+
 function resolveEnemyCounter(enemy, sourceCard = null) {
   const targetSlot = pickEnemyTargetSlot();
   if (!targetSlot) return null;
@@ -5373,6 +5406,7 @@ function resolveEnemyCounter(enemy, sourceCard = null) {
   const attackType = getEnemyAttackType();
   const result = calculateEnemyDamage(targetCard, targetSlot, attackType, enemy, { sourceCard });
   const assaultTriggered = canTriggerEnemyAmbushAssault();
+  const darkAttackTriggered = canTriggerEnemyDarkAttack(enemy, targetCard);
 
   return {
     attackType,
@@ -5382,6 +5416,9 @@ function resolveEnemyCounter(enemy, sourceCard = null) {
     guardTriggered: result.guardTriggered,
     rangedMitigationApplied: result.rangedMitigationApplied,
     assaultTriggered,
+    darkAttackTriggered,
+    enemyLuk: Math.max(0, Math.floor(enemy?.stats?.luk ?? 0)),
+    targetLuk: Math.max(0, Math.floor(targetCard?.stats?.luk ?? 0)),
   };
 }
 
@@ -5607,7 +5644,7 @@ function getMpRecoveryForTurnEnd() {
 function updateMoraleForTurnEnd() {
   const frontCard = state.board.front;
   const generalCard = state.board.general;
-  let moraleDelta = 0;
+  let moraleDelta = -5;
 
   if (frontCard) {
     moraleDelta += isLeaderCard(frontCard) ? PLAYER_FRONT_LEADER_MORALE_GAIN : PLAYER_FRONT_MORALE_GAIN;
@@ -7296,8 +7333,11 @@ function buildPreAttackDamageSteps(finalDamage, breakdown = null) {
 
   if (breakdown && breakdown.type === "gale") {
     const totalSpd = Math.max(0, Math.floor(breakdown.totalSpd ?? damage));
+    const baseBonus = Math.max(0, Math.floor(breakdown.baseBonus ?? 0));
+    const withBonusDamage = Math.max(1, totalSpd + baseBonus);
     return [
       { label: "軍団合計SPD", value: totalSpd },
+      { label: `固定加算 +${baseBonus}`, value: withBonusDamage },
       { label: "疾風の陣", value: damage },
       { label: "FINAL DAMAGE", value: damage, final: true },
     ];
@@ -7305,8 +7345,11 @@ function buildPreAttackDamageSteps(finalDamage, breakdown = null) {
 
   if (breakdown && breakdown.type === "reversal") {
     const totalLuk = Math.max(0, Math.floor(breakdown.totalLuk ?? damage));
+    const baseBonus = Math.max(0, Math.floor(breakdown.baseBonus ?? 0));
+    const withBonusDamage = Math.max(1, totalLuk + baseBonus);
     return [
       { label: "軍団合計LUK", value: totalLuk },
+      { label: `固定加算 +${baseBonus}`, value: withBonusDamage },
       { label: "逆転の陣", value: damage },
       { label: "FINAL DAMAGE", value: damage, final: true },
     ];
@@ -7825,11 +7868,11 @@ function getAttackTypeLabel(type) {
       ? " / 前衛守護: 敵物理反撃を10%カット(全員対象)"
       : "";
   const legionHealHint = isFourthTurnActive()
-    ? " / フェーズ内TURN4効果: 後衛配置時に軍団回復(合計SPRぶんHP回復)"
+    ? ` / フェーズ内TURN4効果: 後衛配置時に軍団回復(合計SPR+${PLAYER_TURN4_LEGION_HEAL_BASE}ぶんHP回復)`
     : "";
   const galeHint =
     isCycleTurn(5)
-      ? ` / フェーズ内TURN5効果: SPD${PLAYER_GALE_FORMATION_TRIGGER_SPD}以上配置で疾風の陣(軍団合計SPDダメージ)`
+      ? ` / フェーズ内TURN5効果: SPD${PLAYER_GALE_FORMATION_TRIGGER_SPD}以上配置で疾風の陣(軍団合計SPD+${PLAYER_GALE_FORMATION_BASE_DAMAGE}ダメージ)`
       : "";
   const ironWallHint =
     isCycleTurn(5)
@@ -7837,7 +7880,7 @@ function getAttackTypeLabel(type) {
       : "";
   const reversalHint =
     isCycleTurn(6)
-      ? " / フェーズ内TURN6効果: トリックスター配置で逆転の陣(軍団合計LUKダメージ)"
+      ? ` / フェーズ内TURN6効果: トリックスター配置で逆転の陣(軍団合計LUK+${PLAYER_REVERSAL_FORMATION_BASE_DAMAGE}ダメージ)`
       : "";
   const strategistEnchantHint =
     strategistCard &&
