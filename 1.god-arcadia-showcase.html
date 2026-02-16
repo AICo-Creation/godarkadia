@@ -744,6 +744,25 @@
         color: var(--gold);
       }
 
+      .primer-attr {
+        margin-top: 14px;
+        border: 1px solid var(--line-soft);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.04);
+        padding: 14px;
+      }
+
+      .primer-attr h3 {
+        margin: 0 0 10px;
+        font-size: 1rem;
+      }
+
+      .primer-attr-note {
+        margin: 0 0 10px;
+        color: #ddd3c0;
+        line-height: 1.8;
+      }
+
       .footer {
         padding: 28px 18px 40px;
         text-align: center;
@@ -996,7 +1015,7 @@
       <header class="topbar">
         <div class="logo">GOD ARCADIA | CELESTIAL CHRONICLE</div>
         <nav aria-label="ページ内ナビゲーション">
-          <a href="https://aico-creation.github.io/godarkadia/" target="_blank" rel="noopener noreferrer">Play</a>
+          <a href="index.html">Play</a>
           <a href="#world">World</a>
           <a href="#log">Log</a>
           <a href="#archive">Archive</a>
@@ -1020,9 +1039,7 @@
               <div class="hero-actions">
                 <a
                   class="cta play"
-                  href="https://aico-creation.github.io/godarkadia/"
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  href="index.html"
                   aria-label="ゴッドアルカディア本編を開く"
                   >ゲームを開始する</a>
                 <a class="cta primary" href="#archive">キャラクターを見る</a>
@@ -1046,7 +1063,7 @@
 
             <div class="hero-visual" id="hero-visual">
               <div class="orb" id="orb"></div>
-              <img class="hero-main" src="1.image/title/title2.jpg" alt="ゴッドアルカディア タイトルビジュアル" />
+              <img class="hero-main" src="1.image/title/title.jpg" alt="ゴッドアルカディア タイトルビジュアル" />
               <div class="hero-main-overlay" aria-hidden="true"></div>
               <img class="floating left" src="1.image/prayer_SR/Ariana.jpg" alt="祈りのアリアナ" />
               <img class="floating right" src="1.image/enemy/Chaos Destroyer.jpg" alt="カオスデストロイヤー" />
@@ -1273,6 +1290,18 @@
                 </ol>
               </section>
             </div>
+            <section class="primer-attr" aria-label="属性ルール">
+              <h3>属性ルール</h3>
+              <p class="primer-attr-note">
+                属性倍率は <strong>有利 x1.25 / 不利 x0.8 / 等倍 x1.0</strong> です。
+              </p>
+              <ul class="primer-list">
+                <li><strong>火</strong> は <strong>風</strong> に有利（風から火への攻撃は不利）。</li>
+                <li><strong>風</strong> は <strong>地</strong> に有利、<strong>地</strong> は <strong>水</strong> に有利、<strong>水</strong> は <strong>火</strong> に有利。</li>
+                <li><strong>光</strong> は <strong>闇</strong> に有利、<strong>闇</strong> は <strong>光</strong> に有利。</li>
+                <li><strong>空</strong> と相性表にない属性同士は有利不利なし（等倍）です。</li>
+              </ul>
+            </section>
           </article>
         </section>
       </main>

@@ -1412,7 +1412,7 @@ function setupTitleScreen() {
     titleGuideBtnEl.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
-      showTitleSubnote("説明書は現在準備中です。");
+      window.location.href = "1.god-arcadia-showcase.html";
     });
   }
 }
