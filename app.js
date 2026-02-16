@@ -422,7 +422,8 @@ const PLAYER_SPELLBLADE_DAMAGE_RATE = 2;
 const PLAYER_BERSERKER_RAGE_BASE_DAMAGE = 500;
 const PLAYER_BERSERKER_RAGE_ATK_BASE = 80;
 const PLAYER_BERSERKER_RAGE_ATK_BONUS_RATE = 70;
-const PLAYER_BERSERKER_RAGE_SELF_DAMAGE = 500;
+const PLAYER_BERSERKER_RAGE_SELF_DAMAGE_RATE = 0.5;
+const PLAYER_BERSERKER_RAGE_IZAYA_GENERAL_RECOIL_RATE = 0.8;
 const PLAYER_BERSERKER_RAGE_SWAY_TRIGGER_DAMAGE = 1000;
 const PLAYER_BERSERKER_RAGE_SWAY_MIN = -300;
 const PLAYER_BERSERKER_RAGE_SWAY_MAX = 100;
@@ -2737,6 +2738,10 @@ function resolveTurnBattle(attacker, slotId, options = {}) {
         madokasuIzayaAttackRate > 1
           ? ` 防御後ダメージにイザヤ補正 x${formatRateLabel(madokasuIzayaAttackRate)}。`
           : "";
+      const berserkerSelfDamageRate = getBerserkerRageSelfDamageRate();
+      const izayaGeneralRecoilNotice = hasIzayaOnGeneral()
+        ? ` 大将イザヤ補正で反動x${formatRateLabel(PLAYER_BERSERKER_RAGE_IZAYA_GENERAL_RECOIL_RATE)}。`
+        : "";
       addPriorityActivationLogs([
         { text: "今宵は戦士の血がたぎるぜ！", kind: "crit" },
         {
@@ -2745,13 +2750,11 @@ function resolveTurnBattle(attacker, slotId, options = {}) {
             `(ATK ${attackerAtk} - ${PLAYER_BERSERKER_RAGE_ATK_BASE}) x ${PLAYER_BERSERKER_RAGE_ATK_BONUS_RATE}` +
             ` = ${berserkerPreviewDamage}。` +
             `${madokasuIzayaBoostNotice}` +
-            ` 反動で味方HP -${PLAYER_BERSERKER_RAGE_SELF_DAMAGE}。`,
+            ` 反動で味方HP -与ダメージx${formatRateLabel(berserkerSelfDamageRate)}。` +
+            `${izayaGeneralRecoilNotice}`,
           kind: "crit",
         },
       ]);
-      if (applyBerserkerRageSelfDamage(attacker)) {
-        return;
-      }
 
       if (canTriggerLifeBurst(attacker, slotId)) {
         if (queueLifeBurstSequence(attacker, slotId)) {
@@ -4009,6 +4012,12 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
   const attackLabel = getAttackLabelByType(attackType);
   const critLabel = playerAttack.critical ? " クリティカル" : "";
   const playerAttackAttributeSuffix = getAttributeLogSuffix(attacker, currentEnemy, true);
+  const isBerserkerRageAttack = attackType === "berserkerRage";
+  let berserkerRageDamageTotal = 0;
+  const applyBerserkerRageSelfDamageIfNeeded = () => {
+    if (!isBerserkerRageAttack) return false;
+    return applyBerserkerRageSelfDamage(attacker, berserkerRageDamageTotal);
+  };
   if (totalHits > 1) {
     addLog(
       `${getCurrentTurnLabel()} ${totalHits}回攻撃 1撃目(${attackLabel}): ${attacker.name} が ${playerAttack.damage} ダメージ。` +
@@ -4022,6 +4031,9 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
       playerAttack.critical ? "crit" : ""
     );
   }
+  if (isBerserkerRageAttack) {
+    berserkerRageDamageTotal += Math.max(0, Math.floor(playerAttack.damage));
+  }
   state.enemyHp = nextEnemyHp;
   playPlayerAttackEffect(attacker, slotId, playerAttack.damage, attackType, playerAttack.critical, {
     hitLabel: totalHits > 1 ? "1 HIT" : "",
@@ -4029,6 +4041,9 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
   });
 
   if (state.enemyHp <= 0) {
+    if (applyBerserkerRageSelfDamageIfNeeded()) {
+      return true;
+    }
     const finishingLabel = totalHits > 1 ? `${totalHits}回攻撃 1撃目(${attackLabel})` : `${attackLabel}攻撃`;
     onEnemyDefeated(currentEnemy, {
       finalAttackMessage: `${attacker.name} の${finishingLabel}で ${playerAttack.damage} ダメージ`,
@@ -4046,6 +4061,9 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
         ` 敵HP ${nextEnemyHpAfterFollowUp}/${currentEnemy.hp}.${followUpCritLabel}${playerAttackAttributeSuffix}`,
       followUpAttack.critical ? "crit" : "good"
     );
+    if (isBerserkerRageAttack) {
+      berserkerRageDamageTotal += Math.max(0, Math.floor(followUpAttack.damage));
+    }
     state.enemyHp = nextEnemyHpAfterFollowUp;
     playPlayerAttackEffect(attacker, slotId, followUpAttack.damage, attackType, followUpAttack.critical, {
       delayMs: PLAYER_FOLLOW_UP_EFFECT_DELAY_MS * (hitIndex - 1),
@@ -4055,11 +4073,18 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
     });
 
     if (state.enemyHp <= 0) {
+      if (applyBerserkerRageSelfDamageIfNeeded()) {
+        return true;
+      }
       onEnemyDefeated(currentEnemy, {
         finalAttackMessage: `${attacker.name} の${totalHits}回攻撃 ${hitIndex}撃目(${attackLabel})で ${followUpAttack.damage} ダメージ`,
       });
       return true;
     }
+  }
+
+  if (applyBerserkerRageSelfDamageIfNeeded()) {
+    return true;
   }
 
   if (
@@ -4539,6 +4564,16 @@ function canTriggerIzayaMadokasuAttackBoost(card, attackType = "physical") {
 function getMadokasuIzayaAttackRate(card, attackType = "physical") {
   if (!canTriggerIzayaMadokasuAttackBoost(card, attackType)) return 1;
   return PLAYER_MADOKASU_IZAYA_ATTACK_RATE;
+}
+
+function hasIzayaOnGeneral() {
+  return isCharacterCard(state.board.general, PLAYER_IZAYA_CHARACTER_ID);
+}
+
+function getBerserkerRageSelfDamageRate() {
+  const baseRate = PLAYER_BERSERKER_RAGE_SELF_DAMAGE_RATE;
+  if (!hasIzayaOnGeneral()) return baseRate;
+  return baseRate * PLAYER_BERSERKER_RAGE_IZAYA_GENERAL_RECOIL_RATE;
 }
 
 function canTriggerZeoliteLastStand(card) {
@@ -5162,11 +5197,21 @@ function resolveFrontSwordianCounter(enemyAction, receivedDamage) {
   return false;
 }
 
-function applyBerserkerRageSelfDamage(attacker) {
-  const nextPlayerHp = Math.max(0, state.playerHp - PLAYER_BERSERKER_RAGE_SELF_DAMAGE);
+function applyBerserkerRageSelfDamage(attacker, dealtDamage = 0) {
+  const normalizedDealtDamage = Math.max(0, Math.floor(Number(dealtDamage) || 0));
+  const baseSelfDamage = Math.max(0, Math.floor(normalizedDealtDamage * PLAYER_BERSERKER_RAGE_SELF_DAMAGE_RATE));
+  const izayaGeneralRecoilApplied = hasIzayaOnGeneral();
+  const selfDamage = izayaGeneralRecoilApplied
+    ? Math.max(0, Math.floor(baseSelfDamage * PLAYER_BERSERKER_RAGE_IZAYA_GENERAL_RECOIL_RATE))
+    : baseSelfDamage;
+  if (selfDamage <= 0) return false;
+  const nextPlayerHp = Math.max(0, state.playerHp - selfDamage);
   state.playerHp = nextPlayerHp;
   addLog(
-    `狂戦士の反動: ${attacker.name} の暴走で味方HP ${PLAYER_BERSERKER_RAGE_SELF_DAMAGE} 減少。` +
+    `狂戦士の反動: ${attacker.name} の暴走で与ダメージ${normalizedDealtDamage}の` +
+      `${Math.round(PLAYER_BERSERKER_RAGE_SELF_DAMAGE_RATE * 100)}%=${baseSelfDamage}` +
+      `${izayaGeneralRecoilApplied ? ` に大将イザヤ補正x${formatRateLabel(PLAYER_BERSERKER_RAGE_IZAYA_GENERAL_RECOIL_RATE)}を適用し` : ""}` +
+      `${selfDamage}を受けた。` +
       ` 味方HP ${state.playerHp}/${getPlayerMaxHp()}.`,
     "warn"
   );
@@ -8584,7 +8629,7 @@ function getAttackTypeLabel(type) {
       : "";
   const berserkerHint =
     isCycleTurn(5)
-      ? ` / フェーズ内TURN5特例: ベルセルクを左翼・前衛・右翼で狂戦士の攻撃(${PLAYER_BERSERKER_RAGE_BASE_DAMAGE} + (ATK-${PLAYER_BERSERKER_RAGE_ATK_BASE})x${PLAYER_BERSERKER_RAGE_ATK_BONUS_RATE}, HP-${PLAYER_BERSERKER_RAGE_SELF_DAMAGE})`
+      ? ` / フェーズ内TURN5特例: ベルセルクを左翼・前衛・右翼で狂戦士の攻撃(${PLAYER_BERSERKER_RAGE_BASE_DAMAGE} + (ATK-${PLAYER_BERSERKER_RAGE_ATK_BASE})x${PLAYER_BERSERKER_RAGE_ATK_BONUS_RATE}, HP-与ダメージx${formatRateLabel(PLAYER_BERSERKER_RAGE_SELF_DAMAGE_RATE)} / 大将イザヤ時さらにx${formatRateLabel(PLAYER_BERSERKER_RAGE_IZAYA_GENERAL_RECOIL_RATE)})`
       : "";
   if (type === "spellblade") {
     return `味方 フェーズ内6ターン: 神聖魔法剣(MP${PLAYER_MP_SPELLBLADE_COST}必要 / ソーディアン・マジックナイト・グラディエーター限定)` +
