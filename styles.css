@@ -38,6 +38,19 @@ body.berserker-screen-shake {
   animation: berserkerScreenShake var(--berserker-screen-shake-ms, 760ms) cubic-bezier(0.2, 0.7, 0.16, 1);
 }
 
+body.zeolite-last-stand-sky::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 69;
+  background:
+    radial-gradient(58% 46% at 50% 44%, rgba(188, 244, 255, 0.56) 0%, rgba(145, 226, 255, 0.24) 44%, rgba(145, 226, 255, 0) 76%),
+    linear-gradient(166deg, rgba(142, 220, 255, 0.28) 0%, rgba(79, 171, 255, 0.16) 52%, rgba(147, 232, 255, 0.3) 100%);
+  mix-blend-mode: screen;
+  animation: zeoliteLastStandSkyOverlay var(--zeolite-last-stand-ms, 1900ms) cubic-bezier(0.16, 0.74, 0.2, 1) forwards;
+}
+
 .ambient {
   position: fixed;
   inset: 0;
@@ -334,37 +347,26 @@ body.turn-multiple-3:not(.turn-multiple-4):not(.turn-multiple-5):not(.turn-multi
   filter: brightness(1.08);
 }
 
+.title-menu-btn:disabled {
+  opacity: 0.52;
+  cursor: default;
+}
+
+.title-menu-btn:disabled:hover {
+  transform: none;
+  filter: none;
+}
+
 .title-subnote {
   margin: 10px 0 0;
   color: rgba(245, 231, 198, 0.92);
   font-size: 0.78rem;
 }
 
-.title-password-panel {
-  margin-top: 14px;
-  border: 1px solid rgba(255, 231, 177, 0.42);
-  border-radius: 16px;
-  padding: 14px 12px 12px;
-  background: linear-gradient(162deg, rgba(13, 11, 18, 0.88), rgba(28, 20, 11, 0.82));
-  box-shadow:
-    inset 0 0 26px rgba(255, 225, 160, 0.1),
-    0 14px 30px rgba(0, 0, 0, 0.36);
-  text-align: left;
-}
-
-.title-settings-panel {
-  margin-top: 14px;
-  border: 1px solid rgba(255, 231, 177, 0.42);
-  border-radius: 16px;
-  padding: 14px 12px 12px;
-  background: linear-gradient(162deg, rgba(13, 11, 18, 0.88), rgba(28, 20, 11, 0.82));
-  box-shadow:
-    inset 0 0 26px rgba(255, 225, 160, 0.1),
-    0 14px 30px rgba(0, 0, 0, 0.36);
-  text-align: left;
-}
-
-.title-arena-panel {
+.title-password-panel,
+.title-settings-panel,
+.title-arena-panel,
+.title-start-confirm-panel {
   margin-top: 14px;
   border: 1px solid rgba(255, 231, 177, 0.42);
   border-radius: 16px;
@@ -380,11 +382,9 @@ body.turn-multiple-3:not(.turn-multiple-4):not(.turn-multiple-5):not(.turn-multi
   margin-bottom: 10px;
 }
 
-.title-settings-head {
-  margin-bottom: 10px;
-}
-
-.title-arena-head {
+.title-settings-head,
+.title-arena-head,
+.title-start-confirm-head {
   margin-bottom: 10px;
 }
 
@@ -396,15 +396,9 @@ body.turn-multiple-3:not(.turn-multiple-4):not(.turn-multiple-5):not(.turn-multi
   color: rgba(247, 229, 190, 0.78);
 }
 
-.title-settings-kicker {
-  margin: 0;
-  font-size: 0.7rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: rgba(247, 229, 190, 0.78);
-}
-
-.title-arena-kicker {
+.title-settings-kicker,
+.title-arena-kicker,
+.title-start-confirm-kicker {
   margin: 0;
   font-size: 0.7rem;
   letter-spacing: 0.22em;
@@ -419,14 +413,9 @@ body.turn-multiple-3:not(.turn-multiple-4):not(.turn-multiple-5):not(.turn-multi
   color: #fff4d2;
 }
 
-.title-settings-head h2 {
-  margin: 4px 0 0;
-  font-size: 1.06rem;
-  letter-spacing: 0.04em;
-  color: #fff4d2;
-}
-
-.title-arena-head h2 {
+.title-settings-head h2,
+.title-arena-head h2,
+.title-start-confirm-head h2 {
   margin: 4px 0 0;
   font-size: 1.06rem;
   letter-spacing: 0.04em;
@@ -446,6 +435,18 @@ body.turn-multiple-3:not(.turn-multiple-4):not(.turn-multiple-5):not(.turn-multi
 .title-arena-grid {
   display: grid;
   gap: 8px;
+}
+
+.title-start-confirm-actions {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.title-start-confirm-actions .title-start-confirm-yes-btn,
+.title-start-confirm-actions .title-start-confirm-no-btn {
+  margin-top: 0;
 }
 
 .title-arena-btn {
@@ -623,7 +624,9 @@ body.turn-multiple-3:not(.turn-multiple-4):not(.turn-multiple-5):not(.turn-multi
 }
 
 .title-settings-back-btn,
-.title-arena-back-btn {
+.title-arena-back-btn,
+.title-start-confirm-yes-btn,
+.title-start-confirm-no-btn {
   appearance: none;
   border: 1px solid rgba(255, 224, 163, 0.66);
   border-radius: 11px;
@@ -650,7 +653,9 @@ body.turn-multiple-3:not(.turn-multiple-4):not(.turn-multiple-5):not(.turn-multi
   filter: brightness(1.08);
 }
 
-.title-arena-back-btn:hover {
+.title-arena-back-btn:hover,
+.title-start-confirm-yes-btn:hover,
+.title-start-confirm-no-btn:hover {
   transform: translateY(-1px);
   filter: brightness(1.08);
 }
@@ -663,6 +668,13 @@ body.turn-multiple-3:not(.turn-multiple-4):not(.turn-multiple-5):not(.turn-multi
 }
 
 .title-arena-note {
+  margin: 9px 0 0;
+  min-height: 1.2em;
+  font-size: 0.76rem;
+  color: rgba(240, 230, 205, 0.92);
+}
+
+.title-start-confirm-note {
   margin: 9px 0 0;
   min-height: 1.2em;
   font-size: 0.76rem;
@@ -1984,6 +1996,104 @@ body.turn-multiple-3:not(.turn-multiple-4):not(.turn-multiple-5):not(.turn-multi
   }
 }
 
+@keyframes zeoliteLastStandSkyOverlay {
+  0% {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  24% {
+    opacity: 0.88;
+    transform: scale(1);
+  }
+  72% {
+    opacity: 0.66;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.01);
+  }
+}
+
+@keyframes zeoliteLastStandHover {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translateY(14px) scale(0.84);
+    filter: brightness(1) saturate(1);
+  }
+  26% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(-2px) scale(1.06);
+    filter: brightness(1.26) saturate(1.18);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translateY(-16px) scale(1.16);
+    filter: brightness(1.34) saturate(1.22);
+  }
+  100% {
+    opacity: 0.2;
+    transform: translate(-50%, -50%) translateY(-26px) scale(1.2);
+    filter: brightness(1.1) saturate(1.12);
+  }
+}
+
+@keyframes zeoliteLastStandAuraPulse {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.72);
+  }
+  24% {
+    opacity: 0.94;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  70% {
+    opacity: 0.86;
+    transform: translate(-50%, -50%) scale(1.14);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.34);
+  }
+}
+
+@keyframes zeoliteLastStandFlareSpin {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(-12deg) scale(0.82);
+  }
+  22% {
+    opacity: 0.9;
+    transform: translate(-50%, -50%) rotate(4deg) scale(1);
+  }
+  100% {
+    opacity: 0.14;
+    transform: translate(-50%, -50%) rotate(192deg) scale(1.2);
+  }
+}
+
+@keyframes zeoliteLastStandSlotAura {
+  0% {
+    transform: translate(0, 0) scale(1);
+    filter: brightness(1);
+    box-shadow: var(--shadow), 0 0 0 rgba(120, 212, 255, 0);
+  }
+  36% {
+    transform: translate(0, -2px) scale(1.03);
+    filter: brightness(1.34) saturate(1.2);
+    box-shadow:
+      var(--shadow),
+      0 0 0 1px rgba(205, 244, 255, 0.84),
+      0 0 28px rgba(128, 221, 255, 0.66),
+      0 0 54px rgba(104, 190, 255, 0.5);
+  }
+  100% {
+    transform: translate(0, 0) scale(1);
+    filter: brightness(1);
+    box-shadow: var(--shadow), 0 0 0 rgba(120, 212, 255, 0);
+  }
+}
+
 @keyframes lunaStarWisdomAuraPulse {
   0% {
     opacity: 0;
@@ -2953,6 +3063,119 @@ body.turn-multiple-3:not(.turn-multiple-4):not(.turn-multiple-5):not(.turn-multi
 }
 
 .attack-fx-berserker-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.attack-fx-zeolite-last-stand {
+  position: fixed;
+  width: clamp(136px, 17vmin, 238px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 73;
+}
+
+.attack-fx-zeolite-last-stand::before,
+.attack-fx-zeolite-last-stand::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  mix-blend-mode: screen;
+}
+
+.attack-fx-zeolite-last-stand::before {
+  width: 156%;
+  height: 156%;
+  background:
+    radial-gradient(circle, rgba(199, 246, 255, 0.74) 0%, rgba(134, 221, 255, 0.38) 44%, rgba(134, 221, 255, 0) 78%);
+  animation: zeoliteLastStandAuraPulse var(--zeolite-last-stand-duration, 1900ms) cubic-bezier(0.16, 0.74, 0.2, 1) forwards;
+}
+
+.attack-fx-zeolite-last-stand::after {
+  width: 128%;
+  height: 128%;
+  border: 1px solid rgba(170, 230, 255, 0.72);
+  box-shadow:
+    0 0 28px rgba(120, 212, 255, 0.58),
+    inset 0 0 24px rgba(178, 236, 255, 0.3);
+  animation:
+    zeoliteLastStandFlareSpin var(--zeolite-last-stand-duration, 1900ms) linear forwards,
+    zeoliteLastStandAuraPulse var(--zeolite-last-stand-duration, 1900ms) ease-out forwards;
+}
+
+.attack-fx-zeolite-last-stand-aura,
+.attack-fx-zeolite-last-stand-flare,
+.attack-fx-zeolite-last-stand-card {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.attack-fx-zeolite-last-stand-aura {
+  width: 104%;
+  height: 104%;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(194, 242, 255, 0.84) 0%, rgba(130, 214, 255, 0.48) 40%, rgba(94, 181, 255, 0.08) 76%, rgba(94, 181, 255, 0) 100%);
+  box-shadow:
+    0 0 34px rgba(138, 223, 255, 0.72),
+    0 0 68px rgba(104, 190, 255, 0.48);
+  animation: zeoliteLastStandAuraPulse var(--zeolite-last-stand-duration, 1900ms) cubic-bezier(0.16, 0.74, 0.2, 1) forwards;
+}
+
+.attack-fx-zeolite-last-stand-flare {
+  width: 120%;
+  height: 120%;
+  border-radius: 50%;
+  border: 1px solid rgba(177, 236, 255, 0.8);
+  box-shadow:
+    inset 0 0 18px rgba(196, 243, 255, 0.36),
+    0 0 24px rgba(118, 205, 255, 0.58);
+  animation: zeoliteLastStandFlareSpin var(--zeolite-last-stand-duration, 1900ms) linear forwards;
+}
+
+.attack-fx-zeolite-last-stand-card {
+  width: clamp(86px, 10vmin, 134px);
+  aspect-ratio: 3 / 4;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid rgba(184, 238, 255, 0.9);
+  box-shadow:
+    0 16px 30px rgba(0, 0, 0, 0.48),
+    0 0 34px rgba(132, 217, 255, 0.8),
+    0 0 64px rgba(93, 180, 255, 0.56);
+  animation: zeoliteLastStandHover var(--zeolite-last-stand-duration, 1900ms) cubic-bezier(0.16, 0.74, 0.2, 1) forwards;
+}
+
+.attack-fx-zeolite-last-stand-card::before {
+  content: "";
+  position: absolute;
+  inset: -12%;
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(219, 249, 255, 0.36) 0%, rgba(137, 221, 255, 0.16) 54%, rgba(137, 221, 255, 0) 86%);
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+.attack-fx-zeolite-last-stand-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(132deg, rgba(236, 252, 255, 0.28) 0%, rgba(172, 236, 255, 0.18) 30%, rgba(94, 181, 255, 0.24) 66%, rgba(236, 252, 255, 0.12) 100%);
+}
+
+.attack-fx-zeolite-last-stand-card img {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -5623,6 +5846,10 @@ body.turn-multiple-3:not(.turn-multiple-4):not(.turn-multiple-5):not(.turn-multi
   animation: berserkerRageSlotAura 1.1s ease-out;
 }
 
+.board-slot.zeolite-last-stand-glow {
+  animation: zeoliteLastStandSlotAura 1.18s ease-out;
+}
+
 .board-slot.luna-star-wisdom-glow {
   animation: lunaStarWisdomSlotAura 1.02s ease-out;
 }
@@ -5771,6 +5998,7 @@ body.turn-multiple-3:not(.turn-multiple-4):not(.turn-multiple-5):not(.turn-multi
 
 .board-player-status {
   margin-bottom: 12px;
+  position: relative;
 }
 
 .morale-value {
@@ -5789,6 +6017,29 @@ body.turn-multiple-3:not(.turn-multiple-4):not(.turn-multiple-5):not(.turn-multi
 .morale-value strong {
   color: #ffe5a7;
   font-weight: 700;
+}
+
+.player-score-chip {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  margin: 0;
+  width: 136px;
+  text-align: right;
+  color: #ffe5a7;
+  font-family: "Avenir Next", "Yu Gothic", sans-serif;
+  font-size: 0.74rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.player-score-chip strong {
+  margin-left: 6px;
+  color: #ffe5a7;
+  font-size: 0.98rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 .board-row {

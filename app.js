@@ -196,7 +196,6 @@ const SUMMON_CHARACTERS = [
     race: "神聖人",
     stats: { atk: 24, def: 46, mag: 91, spr: 84, spd: 63, luk: 75 },
     isSummonCard: true,
-    summonCode: "SEREN8KQ2X",
   },
   {
     id: "jeffrey",
@@ -208,7 +207,6 @@ const SUMMON_CHARACTERS = [
     race: "人間",
     stats: { atk: 84, def: 72, mag: 83, spr: 80, spd: 67, luk: 70 },
     isSummonCard: true,
-    summonCode: "ELDR8JEF2Q",
   },
   {
     id: "volgram",
@@ -377,10 +375,16 @@ const ARENA_ENEMY_ROSTER = [
   },
 ];
 
+const ENEMY_BY_ID = Object.fromEntries(
+  [...ENEMY_ROSTER, ...ARENA_ENEMY_ROSTER].map((enemy) => [enemy.id, enemy])
+);
+const ARENA_ENEMY_ID_SET = new Set(ARENA_ENEMY_ROSTER.map((enemy) => enemy.id));
+
 const PLAYER_MAX_HP = 3000;
 const PLAYER_SUMMON_CARD_HP_BONUS = 100;
 const SUMMON_CARD_UNLOCK_STORAGE_KEY = "god_arcadia_unlocked_summon_cards_v1";
 const TITLE_SETTINGS_STORAGE_KEY = "god_arcadia_title_settings_v1";
+const CONTINUE_STATE_STORAGE_KEY = "god_arcadia_continue_state_v1";
 const PLAYER_MORALE_MIN = 0;
 const PLAYER_MORALE_MAX = 1000;
 const PLAYER_MORALE_INITIAL = 50;
@@ -449,6 +453,23 @@ const PLAYER_TURN4_LEGION_HEAL_BASE = 200;
 const PLAYER_PHYSICAL_CRIT_BONUS_ON_5TH_TURN = 1.2;
 const BATTLE_TURNS_PER_PHASE = 6;
 const BATTLE_PHASE_LIMIT = 3;
+const SCORE_BASE = 1000;
+const SCORE_TURN_PENALTY = 100;
+const SCORE_SINGLE_PHASE_CLEAR_BONUS = 500;
+const SCORE_HP_RATE = 0.1;
+const SCORE_MP_RATE = 0.5;
+const SCORE_MORALE_RATE = 1;
+const ATTRIBUTE_ADVANTAGE_RATE = 1.25;
+const ATTRIBUTE_DISADVANTAGE_RATE = 0.8;
+const ATTRIBUTE_NEUTRAL_RATE = 1;
+const ATTRIBUTE_ADVANTAGE_TABLE = {
+  火: ["風"],
+  風: ["地"],
+  地: ["水"],
+  水: ["火"],
+  光: ["闇"],
+  闇: ["光"],
+};
 const PLAYER_LIFE_BURST_TRIGGER_ATK = 95;
 const PLAYER_LIFE_BURST_TRIGGER_HP_DIVISOR = 5;
 const PLAYER_LIFE_BURST_MISSING_HP_DIVISOR = 2;
@@ -465,10 +486,13 @@ const PLAYER_ZEOLITE_CHARACTER_ID = "zeolite";
 const PLAYER_ELDAS_CHARACTER_ID = "eldas";
 const PLAYER_LUNA_CHARACTER_ID = "luna";
 const PLAYER_IZAYA_CHARACTER_ID = "izaya";
+const PLAYER_MADOKASU_CHARACTER_ID = "madokasu";
 const PLAYER_NAMI_CHARACTER_ID = "nami";
 const PLAYER_LION_CHARACTER_ID = "lion";
 const PLAYER_GAIUS_CHARACTER_ID = "gaius";
 const PLAYER_NAMI_IZAYA_ATTACK_RATE = 1.2;
+const PLAYER_MADOKASU_IZAYA_ATTACK_RATE = 1.3;
+const PLAYER_ZEOLITE_LAST_STAND_RATE = 3;
 const PLAYER_VOLGRAM_ARIANA_WARRIOR_MORALE_RATE = 1.5;
 const PLAYER_ARIANA_ZEOLITE_HEAL_RATE = 1.5;
 const PLAYER_ARIANA_LION_REAR_ARCHER_RATE = 2;
@@ -503,6 +527,7 @@ const HOLY_REAR_HEAL_MAGIC_EFFECT_MS = 3600;
 const LANCELATE_PREEMPTIVE_EFFECT_MS = 1700;
 const BERSERKER_RAGE_EFFECT_MS = 1700;
 const BERSERKER_SCREEN_SHAKE_MS = 760;
+const ZEOLITE_LAST_STAND_EFFECT_MS = 1900;
 const STRATEGIST_ENCHANT_LINK_EFFECT_MS = 3200;
 const MINSTREL_RELAY_EFFECT_MS = 1900;
 const ENEMY_FINAL_ATTACK_HOLD_MS = 900;
@@ -545,9 +570,11 @@ const TITLE_PASSWORD_EXTRA_ALIASES = {
   s06: "noct",
   s07: "lucia",
   s08: "drake_s",
-  seren8kq2x: "luna",
-  eldr8jef2q: "jeffrey",
-  vorg8r6m1x: "volgram",
+};
+const TITLE_PASSWORD_SUMMON_HASH_ALIASES = {
+  "8dc075c56c35beef803c6a7649a938fcd489fc927537a6d04036185f1be29938": "luna",
+  "4e213cce01b1d8d1a82fd861fed1b77da21822a6d2803ea7c83c57e054af94d4": "jeffrey",
+  "6e4a1e9f0260ca404a393304ebe082394b80be4ecf5d43e412e742c327a84d7c": "volgram",
 };
 const TITLE_PASSWORD_EXTRA_SUMMONS = SUMMON_CHARACTERS.map((card) => ({
   id: card.id,
@@ -659,6 +686,7 @@ const playerHpValueEl = document.getElementById("player-hp-value");
 const playerHpFillEl = document.getElementById("player-hp-fill");
 const playerMoraleValueEl = document.getElementById("player-morale-value");
 const playerMpValueEl = document.getElementById("player-mp-value");
+const playerScoreValueEl = document.getElementById("player-score-value");
 const turnValueEl = document.getElementById("turn-value");
 const turnRuleEl = document.getElementById("turn-rule");
 const turnKickerEl = document.querySelector("#main-turn-panel .turn-kicker");
@@ -673,9 +701,14 @@ const titleScreenEl = document.getElementById("title-screen");
 const titlePrimaryTapEl = document.getElementById("title-primary-tap");
 const titleMenuEl = document.getElementById("title-menu");
 const titleStartBtnEl = document.getElementById("title-start-btn");
+const titleStartConfirmPanelEl = document.getElementById("title-start-confirm-panel");
+const titleStartConfirmYesBtnEl = document.getElementById("title-start-confirm-yes-btn");
+const titleStartConfirmNoBtnEl = document.getElementById("title-start-confirm-no-btn");
+const titleContinueBtnEl = document.getElementById("title-continue-btn");
 const titleArenaBtnEl = document.getElementById("title-arena-btn");
 const titlePasswordBtnEl = document.getElementById("title-password-btn");
 const titleSettingsBtnEl = document.getElementById("title-settings-btn");
+const titleGuideBtnEl = document.getElementById("title-guide-btn");
 const titleSubnoteEl = document.getElementById("title-subnote");
 const titleArenaPanelEl = document.getElementById("title-arena-panel");
 const titleArenaBackBtnEl = document.getElementById("title-arena-back-btn");
@@ -723,6 +756,7 @@ const state = {
   playerHp: PLAYER_MAX_HP,
   morale: PLAYER_MORALE_INITIAL,
   mp: PLAYER_MP_INITIAL,
+  score: 0,
   battleEnded: false,
   drawModalOpen: false,
   pendingEnemyAction: null,
@@ -751,7 +785,7 @@ function init() {
   bindEvents();
   setupTitleScreen();
   setupBackgroundMusic();
-  resetGame();
+  resetGame({ saveContinueState: false });
 }
 
 function getUnlockedSummonCardCount() {
@@ -838,6 +872,189 @@ function saveTitleSettings() {
 
 function hydrateTitleSettings() {
   state.titleSettings = loadTitleSettings();
+}
+
+function isContinueCheckpointTurn(turn = state.turn, phase = state.phase) {
+  return normalizeBattleTurn(turn) === 1 && normalizeBattlePhase(phase) === 1;
+}
+
+function isArenaEnemyId(enemyId) {
+  if (typeof enemyId !== "string") return false;
+  return ARENA_ENEMY_ID_SET.has(enemyId);
+}
+
+function hasArenaEnemyInRoster(enemyRoster = []) {
+  if (!Array.isArray(enemyRoster) || enemyRoster.length === 0) return false;
+  return enemyRoster.some((enemy) => isArenaEnemyId(enemy?.id));
+}
+
+function buildContinueStateSnapshot() {
+  const activeEnemyRoster = getActiveEnemyRoster();
+  if (hasArenaEnemyInRoster(activeEnemyRoster)) return null;
+  const currentEnemy = getCurrentEnemy();
+  const checkpointEnemyHp = Math.max(0, Math.floor(currentEnemy?.hp ?? state.enemyHp ?? 0));
+  const normalizedScore = Number(state.score);
+  return {
+    enemyRosterIds: activeEnemyRoster.map((enemy) => enemy.id),
+    enemyIndex: Math.max(0, Math.floor(state.enemyIndex)),
+    enemyHp: checkpointEnemyHp,
+    phase: 1,
+    turn: 1,
+    playerHp: Math.max(0, Math.floor(state.playerHp)),
+    mp: Math.max(0, Math.floor(state.mp)),
+    morale: Math.max(PLAYER_MORALE_MIN, Math.floor(state.morale)),
+    score: Number.isFinite(normalizedScore) ? normalizedScore : 0,
+  };
+}
+
+function persistContinueStateSnapshot() {
+  const snapshot = buildContinueStateSnapshot();
+  if (!snapshot) return false;
+  try {
+    window.localStorage.setItem(CONTINUE_STATE_STORAGE_KEY, JSON.stringify(snapshot));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function clearContinueStateSnapshot() {
+  try {
+    window.localStorage.removeItem(CONTINUE_STATE_STORAGE_KEY);
+  } catch {}
+}
+
+function resolveEnemyRosterFromSnapshotIds(enemyRosterIds = []) {
+  if (!Array.isArray(enemyRosterIds) || enemyRosterIds.length === 0) {
+    return [...ENEMY_ROSTER];
+  }
+
+  const seen = new Set();
+  const resolved = [];
+  enemyRosterIds.forEach((enemyId) => {
+    if (typeof enemyId !== "string" || seen.has(enemyId)) return;
+    const enemy = ENEMY_BY_ID[enemyId];
+    if (!enemy) return;
+    seen.add(enemyId);
+    resolved.push(enemy);
+  });
+
+  return resolved.length > 0 ? resolved : [...ENEMY_ROSTER];
+}
+
+function loadContinueStateSnapshot() {
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  const toFiniteNumber = (value, fallback = 0) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : fallback;
+  };
+
+  try {
+    const raw = window.localStorage.getItem(CONTINUE_STATE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+
+    const requiredKeys = ["playerHp", "mp", "morale", "score"];
+    if (requiredKeys.some((key) => !Object.prototype.hasOwnProperty.call(parsed, key))) {
+      return null;
+    }
+
+    const enemyRoster = resolveEnemyRosterFromSnapshotIds(parsed.enemyRosterIds);
+    if (hasArenaEnemyInRoster(enemyRoster)) return null;
+    const enemyIndex = clamp(Math.floor(toFiniteNumber(parsed.enemyIndex, 0)), 0, enemyRoster.length - 1);
+    const enemyAtIndex = enemyRoster[enemyIndex] ?? enemyRoster[0];
+    const enemyHp = Math.max(0, Math.floor(enemyAtIndex.hp));
+
+    return {
+      enemyRosterIds: enemyRoster.map((enemy) => enemy.id),
+      enemyIndex,
+      enemyHp,
+      phase: 1,
+      turn: 1,
+      playerHp: clamp(Math.floor(toFiniteNumber(parsed.playerHp, getPlayerMaxHp())), 0, getPlayerMaxHp()),
+      mp: clamp(Math.floor(toFiniteNumber(parsed.mp, PLAYER_MP_INITIAL)), 0, PLAYER_MP_MAX),
+      morale: clamp(
+        Math.floor(toFiniteNumber(parsed.morale, PLAYER_MORALE_INITIAL)),
+        PLAYER_MORALE_MIN,
+        PLAYER_MORALE_MAX
+      ),
+      score: toFiniteNumber(parsed.score, 0),
+    };
+  } catch {
+    return null;
+  }
+}
+
+function syncTitleContinueButtonState() {
+  if (!titleContinueBtnEl) return;
+  const hasContinueData = Boolean(loadContinueStateSnapshot());
+  titleContinueBtnEl.disabled = !hasContinueData;
+  titleContinueBtnEl.setAttribute("aria-disabled", hasContinueData ? "false" : "true");
+  if (hasContinueData) {
+    titleContinueBtnEl.removeAttribute("title");
+  } else {
+    titleContinueBtnEl.setAttribute("title", "コンティニューデータがありません");
+  }
+}
+
+function applyContinueStateSnapshot(snapshot) {
+  if (!snapshot || typeof snapshot !== "object") return false;
+  const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+  const toFiniteNumber = (value, fallback = 0) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : fallback;
+  };
+  const enemyRoster = resolveEnemyRosterFromSnapshotIds(snapshot.enemyRosterIds);
+  if (hasArenaEnemyInRoster(enemyRoster)) return false;
+  setActiveEnemyRoster(enemyRoster);
+  resetGame({ saveContinueState: false });
+
+  const maxEnemyIndex = enemyRoster.length - 1;
+  state.enemyIndex = clamp(Math.floor(toFiniteNumber(snapshot.enemyIndex, 0)), 0, maxEnemyIndex);
+  const currentEnemy = getCurrentEnemy();
+  state.enemyHp = Math.max(0, Math.floor(currentEnemy.hp));
+
+  state.phase = 1;
+  state.turn = 1;
+  state.displayPhase = state.phase;
+  state.displayTurn = state.turn;
+  state.pendingTurnDisplayUpdate = false;
+  clearTurnDisplaySyncTimer();
+
+  const playerMaxHp = getPlayerMaxHp();
+  state.playerHp = clamp(Math.floor(toFiniteNumber(snapshot.playerHp, playerMaxHp)), 0, playerMaxHp);
+  state.mp = clamp(Math.floor(toFiniteNumber(snapshot.mp, PLAYER_MP_INITIAL)), 0, PLAYER_MP_MAX);
+  state.morale = clamp(
+    Math.floor(toFiniteNumber(snapshot.morale, PLAYER_MORALE_INITIAL)),
+    PLAYER_MORALE_MIN,
+    PLAYER_MORALE_MAX
+  );
+  const snapshotScore = Number(snapshot.score);
+  state.score = Number.isFinite(snapshotScore) ? snapshotScore : 0;
+
+  state.logs = [];
+  addLog(`コンティニュー再開: ${formatTurnLabel(state.turn, state.phase)}`, "good");
+  persistContinueStateSnapshot();
+  syncTitleContinueButtonState();
+  renderAll();
+  return true;
+}
+
+function startGameFromContinueSnapshot() {
+  const snapshot = loadContinueStateSnapshot();
+  if (!snapshot) {
+    syncTitleContinueButtonState();
+    showTitleSubnote("コンティニューデータがありません。");
+    return false;
+  }
+  if (!applyContinueStateSnapshot(snapshot)) {
+    showTitleSubnote("コンティニューデータの読込に失敗しました。");
+    return false;
+  }
+  startBackgroundMusic();
+  startTitleGameTransition();
+  return true;
 }
 
 function syncTitleSettingsView() {
@@ -1042,16 +1259,21 @@ function setupTitleScreen() {
   if (titleArenaPanelEl) {
     titleArenaPanelEl.hidden = true;
   }
+  if (titleStartConfirmPanelEl) {
+    titleStartConfirmPanelEl.hidden = true;
+  }
   clearTitleSummonNode();
   resetTitlePasswordNote();
   syncTitleSettingsView();
   clearTitleSubnote();
+  syncTitleContinueButtonState();
 
   titleScreenEl.addEventListener("click", () => {
     startBackgroundMusic();
     if (isTitlePasswordPanelOpen()) return;
     if (isTitleSettingsPanelOpen()) return;
     if (isTitleArenaPanelOpen()) return;
+    if (isTitleStartConfirmPanelOpen()) return;
     if (!titleMenuEl || !titleMenuEl.hidden) return;
     revealTitleMenu();
   });
@@ -1071,12 +1293,44 @@ function setupTitleScreen() {
       event.stopPropagation();
     });
   }
+  if (titleStartConfirmPanelEl) {
+    titleStartConfirmPanelEl.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+  }
 
   if (titleStartBtnEl) {
     titleStartBtnEl.addEventListener("click", (event) => {
       event.preventDefault();
       event.stopPropagation();
+      openTitleStartConfirmPanel();
+    });
+  }
+
+  if (titleStartConfirmYesBtnEl) {
+    titleStartConfirmYesBtnEl.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      clearContinueStateSnapshot();
+      syncTitleContinueButtonState();
+      closeTitleStartConfirmPanel({ reopenMenu: false });
       startGameFromTitle(ENEMY_ROSTER);
+    });
+  }
+
+  if (titleStartConfirmNoBtnEl) {
+    titleStartConfirmNoBtnEl.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      closeTitleStartConfirmPanel();
+    });
+  }
+
+  if (titleContinueBtnEl) {
+    titleContinueBtnEl.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      startGameFromContinueSnapshot();
     });
   }
 
@@ -1153,6 +1407,14 @@ function setupTitleScreen() {
       toggleTitleBgmEnabled();
     });
   }
+
+  if (titleGuideBtnEl) {
+    titleGuideBtnEl.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      showTitleSubnote("説明書は現在準備中です。");
+    });
+  }
 }
 
 function isTitlePasswordPanelOpen() {
@@ -1165,6 +1427,10 @@ function isTitleSettingsPanelOpen() {
 
 function isTitleArenaPanelOpen() {
   return Boolean(titleArenaPanelEl && !titleArenaPanelEl.hidden);
+}
+
+function isTitleStartConfirmPanelOpen() {
+  return Boolean(titleStartConfirmPanelEl && !titleStartConfirmPanelEl.hidden);
 }
 
 function getActiveEnemyRoster() {
@@ -1199,6 +1465,35 @@ function startGameFromTitle(roster = ENEMY_ROSTER, options = {}) {
   startTitleGameTransition();
 }
 
+function openTitleStartConfirmPanel() {
+  if (!titleStartConfirmPanelEl) return;
+  if (titleMenuEl) {
+    titleMenuEl.hidden = true;
+  }
+  if (titleArenaPanelEl) {
+    titleArenaPanelEl.hidden = true;
+  }
+  if (titlePasswordPanelEl) {
+    titlePasswordPanelEl.hidden = true;
+  }
+  if (titleSettingsPanelEl) {
+    titleSettingsPanelEl.hidden = true;
+  }
+  titleStartConfirmPanelEl.hidden = false;
+  clearTitleSubnote();
+}
+
+function closeTitleStartConfirmPanel(options = {}) {
+  const { reopenMenu = true } = options;
+  if (titleStartConfirmPanelEl) {
+    titleStartConfirmPanelEl.hidden = true;
+  }
+  if (reopenMenu && titleMenuEl) {
+    titleMenuEl.hidden = false;
+  }
+  clearTitleSubnote();
+}
+
 function openTitleArenaPanel() {
   if (!titleArenaPanelEl) return;
   if (titleMenuEl) {
@@ -1209,6 +1504,9 @@ function openTitleArenaPanel() {
   }
   if (titleSettingsPanelEl) {
     titleSettingsPanelEl.hidden = true;
+  }
+  if (titleStartConfirmPanelEl) {
+    titleStartConfirmPanelEl.hidden = true;
   }
   titleArenaPanelEl.hidden = false;
   clearTitleSubnote();
@@ -1234,6 +1532,9 @@ function openTitlePasswordPanel() {
   }
   if (titleSettingsPanelEl) {
     titleSettingsPanelEl.hidden = true;
+  }
+  if (titleStartConfirmPanelEl) {
+    titleStartConfirmPanelEl.hidden = true;
   }
   titlePasswordPanelEl.hidden = false;
   clearTitleSubnote();
@@ -1268,6 +1569,9 @@ function openTitleSettingsPanel() {
   if (titlePasswordPanelEl) {
     titlePasswordPanelEl.hidden = true;
   }
+  if (titleStartConfirmPanelEl) {
+    titleStartConfirmPanelEl.hidden = true;
+  }
   titleSettingsPanelEl.hidden = false;
   syncTitleSettingsView();
   clearTitleSubnote();
@@ -1290,7 +1594,14 @@ function normalizeTitlePasswordKey(value) {
     .replace(/[\s_\-・]+/g, "");
 }
 
-function resolveTitlePasswordSummon(inputValue) {
+async function sha256Hex(value) {
+  if (!window.crypto?.subtle || typeof TextEncoder !== "function") return "";
+  const encoded = new TextEncoder().encode(String(value ?? ""));
+  const digest = await window.crypto.subtle.digest("SHA-256", encoded);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+async function resolveTitlePasswordSummon(inputValue) {
   const normalized = normalizeTitlePasswordKey(inputValue);
   if (!normalized) return null;
 
@@ -1298,6 +1609,13 @@ function resolveTitlePasswordSummon(inputValue) {
   if (directId) {
     const directEntry = TITLE_PASSWORD_SUMMONS.find((entry) => entry.id === directId);
     if (directEntry) return directEntry;
+  }
+
+  const hashedKey = await sha256Hex(normalized);
+  const summonId = TITLE_PASSWORD_SUMMON_HASH_ALIASES[hashedKey];
+  if (summonId) {
+    const summonEntry = TITLE_PASSWORD_SUMMONS.find((entry) => entry.id === summonId);
+    if (summonEntry) return summonEntry;
   }
 
   for (const entry of TITLE_PASSWORD_SUMMONS) {
@@ -1390,12 +1708,12 @@ function renderTitleSummonNode(entry) {
   titleSummonNodeEl.hidden = false;
 }
 
-function handleTitlePasswordSubmit(event) {
+async function handleTitlePasswordSubmit(event) {
   event.preventDefault();
   event.stopPropagation();
   if (!titlePasswordInputEl) return;
 
-  const entry = resolveTitlePasswordSummon(titlePasswordInputEl.value);
+  const entry = await resolveTitlePasswordSummon(titlePasswordInputEl.value);
   if (!entry) {
     clearTitleSummonNode();
     setTitlePasswordNote("コードが一致しません。", "error");
@@ -1452,6 +1770,7 @@ function revealTitleMenu() {
   if (titlePrimaryTapEl) {
     titlePrimaryTapEl.hidden = true;
   }
+  syncTitleContinueButtonState();
   clearTitleSubnote();
 }
 
@@ -1537,6 +1856,32 @@ function getBattleTurnIndex(turn = state.turn, phase = state.phase) {
   return (normalizedPhase - 1) * BATTLE_TURNS_PER_PHASE + normalizedTurn;
 }
 
+function getResidualScoreAtCurrentState() {
+  const playerHp = Math.max(0, Math.min(getPlayerMaxHp(), state.playerHp));
+  const playerMp = Math.max(0, Math.min(PLAYER_MP_MAX, state.mp));
+  const playerMorale = Math.max(PLAYER_MORALE_MIN, Math.min(PLAYER_MORALE_MAX, state.morale));
+  return playerHp * SCORE_HP_RATE + playerMp * SCORE_MP_RATE + playerMorale * SCORE_MORALE_RATE;
+}
+
+function getTurnScoreForCurrentBattleState() {
+  const turnCount = getBattleTurnIndex(state.turn, state.phase);
+  let turnScore = SCORE_BASE - turnCount * SCORE_TURN_PENALTY;
+  if (normalizeBattlePhase(state.phase) <= 1) {
+    turnScore += SCORE_SINGLE_PHASE_CLEAR_BONUS;
+  }
+  return turnScore;
+}
+
+function getEnemyDefeatScoreGain() {
+  return getTurnScoreForCurrentBattleState() + getResidualScoreAtCurrentState();
+}
+
+function formatScoreValue(scoreValue = 0) {
+  const normalized = Number(scoreValue);
+  if (!Number.isFinite(normalized)) return "0.0";
+  return normalized.toFixed(1);
+}
+
 function isCycleTurn(turnNumber, turn = state.turn) {
   return normalizeBattleTurn(turn) === turnNumber;
 }
@@ -1559,8 +1904,15 @@ function formatTurnLabel(turn = state.turn, phase = state.phase) {
   return `PHASE ${phaseNumber} / TURN ${turnNumber}`;
 }
 
-function addSimpleTurnStartLog(turn = state.turn, phase = state.phase) {
-  const turnLabel = formatTurnLabel(turn, phase);
+function addSimpleTurnStartLog(turn = state.turn, phase = state.phase, options = {}) {
+  const { saveContinueState = true } = options;
+  const normalizedTurn = normalizeBattleTurn(turn);
+  const normalizedPhase = normalizeBattlePhase(phase);
+  const turnLabel = formatTurnLabel(normalizedTurn, normalizedPhase);
+  if (saveContinueState && isContinueCheckpointTurn(normalizedTurn, normalizedPhase)) {
+    persistContinueStateSnapshot();
+    syncTitleContinueButtonState();
+  }
   if (hasPendingActivationLog()) {
     addActivationLog(turnLabel, "good");
     return;
@@ -1574,7 +1926,7 @@ function commitDisplayedTurn(turn = state.turn, phase = state.phase) {
   state.displayTurn = normalizedTurn;
   state.displayPhase = normalizedPhase;
   state.pendingTurnDisplayUpdate = false;
-  addSimpleTurnStartLog(normalizedTurn, normalizedPhase);
+  addSimpleTurnStartLog(normalizedTurn, normalizedPhase, { saveContinueState: false });
 }
 
 function scheduleDisplayedTurnAfterCombat(turn = state.turn, phase = state.phase) {
@@ -1692,7 +2044,8 @@ function handlePendingProgressClick(event) {
   }
 }
 
-function resetGame() {
+function resetGame(options = {}) {
+  const { saveContinueState = true } = options;
   const activeEnemyRoster = getActiveEnemyRoster();
   const firstEnemy = activeEnemyRoster[0] ?? ENEMY_ROSTER[0];
   clearEnemyTransitionEffects({ resetState: false });
@@ -1714,6 +2067,7 @@ function resetGame() {
   state.playerHp = getPlayerMaxHp();
   state.morale = PLAYER_MORALE_INITIAL;
   state.mp = PLAYER_MP_INITIAL;
+  state.score = 0;
   state.battleEnded = false;
   state.drawModalOpen = false;
   state.pendingEnemyAction = null;
@@ -1737,7 +2091,7 @@ function resetGame() {
     `盤面を初期化。第1戦 ${firstEnemy.name}。神のサイコロで${PLAYER_DRAW_CARD_COUNT}枚ドローしてください。` +
       ` 所持カード ${buildPlayerCardPool().length}枚 (召喚カード ${getUnlockedSummonCardCount()}枚)。`
   );
-  addSimpleTurnStartLog(state.displayTurn, state.displayPhase);
+  addSimpleTurnStartLog(state.displayTurn, state.displayPhase, { saveContinueState });
   renderAll();
 }
 
@@ -2373,11 +2727,16 @@ function resolveTurnBattle(attacker, slotId, options = {}) {
     if (berserkerRageTriggered) {
       actualAttackType = "berserkerRage";
       const attackerAtk = Math.max(0, Math.floor(attacker?.stats?.atk ?? 0));
+      const madokasuIzayaAttackRate = getMadokasuIzayaAttackRate(attacker, "berserkerRage");
       const berserkerBonusDamage = Math.max(
         0,
         Math.floor((attackerAtk - PLAYER_BERSERKER_RAGE_ATK_BASE) * PLAYER_BERSERKER_RAGE_ATK_BONUS_RATE)
       );
       const berserkerPreviewDamage = PLAYER_BERSERKER_RAGE_BASE_DAMAGE + berserkerBonusDamage;
+      const madokasuIzayaBoostNotice =
+        madokasuIzayaAttackRate > 1
+          ? ` 防御後ダメージにイザヤ補正 x${formatRateLabel(madokasuIzayaAttackRate)}。`
+          : "";
       addPriorityActivationLogs([
         { text: "今宵は戦士の血がたぎるぜ！", kind: "crit" },
         {
@@ -2385,6 +2744,7 @@ function resolveTurnBattle(attacker, slotId, options = {}) {
             `${getCurrentTurnLabel()} 狂戦士の攻撃が発動: ${PLAYER_BERSERKER_RAGE_BASE_DAMAGE}(固定) + ` +
             `(ATK ${attackerAtk} - ${PLAYER_BERSERKER_RAGE_ATK_BASE}) x ${PLAYER_BERSERKER_RAGE_ATK_BONUS_RATE}` +
             ` = ${berserkerPreviewDamage}。` +
+            `${madokasuIzayaBoostNotice}` +
             ` 反動で味方HP -${PLAYER_BERSERKER_RAGE_SELF_DAMAGE}。`,
           kind: "crit",
         },
@@ -3180,6 +3540,9 @@ function resolvePendingPostActivationPlayerAction() {
     suppressJeffreyCeriseSupportPrompt,
     suppressVolgramArianaWarriorPrompt,
     suppressLancelateArianaFollowUpPrompt,
+    suppressLionArianaFollowUpPrompt,
+    suppressMadokasuIzayaAttackBoostPrompt,
+    suppressZeoliteLastStandPrompt,
   } = pendingAction;
   const currentEnemy = getCurrentEnemy();
   if (!attacker || !slotId || !attackType || !currentEnemy || enemyIndex !== state.enemyIndex) {
@@ -3199,6 +3562,9 @@ function resolvePendingPostActivationPlayerAction() {
       suppressJeffreyCeriseSupportPrompt,
       suppressVolgramArianaWarriorPrompt,
       suppressLancelateArianaFollowUpPrompt,
+      suppressLionArianaFollowUpPrompt,
+      suppressMadokasuIzayaAttackBoostPrompt,
+      suppressZeoliteLastStandPrompt,
     })
   ) {
     return true;
@@ -3251,9 +3617,91 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
   const suppressJeffreyCeriseSupportPrompt = Boolean(options.suppressJeffreyCeriseSupportPrompt);
   const suppressVolgramArianaWarriorPrompt = Boolean(options.suppressVolgramArianaWarriorPrompt);
   const suppressLancelateArianaFollowUpPrompt = Boolean(options.suppressLancelateArianaFollowUpPrompt);
+  const suppressLionArianaFollowUpPrompt = Boolean(options.suppressLionArianaFollowUpPrompt);
+  const suppressMadokasuIzayaAttackBoostPrompt = Boolean(options.suppressMadokasuIzayaAttackBoostPrompt);
+  const suppressZeoliteLastStandPrompt = Boolean(options.suppressZeoliteLastStandPrompt);
+  const zeoliteLastStandActive = canTriggerZeoliteLastStand(attacker);
+  const madokasuIzayaAttackBoostActive = canTriggerIzayaMadokasuAttackBoost(attacker, attackType);
+  const lionArianaFollowUpBoostActive = canTriggerArianaLionFollowUpBoost(attacker);
   const lancelateArianaFollowUpBoostActive = canTriggerArianaLancelateFollowUpBoost(attacker);
   const volgramArianaWarriorMoraleBoostActive = canTriggerVolgramArianaWarriorMoraleBoost(attacker, attackType);
   const namiIzayaGuardActive = getNamiIzayaAttackRate(attacker, attackType) > 1;
+
+  if (zeoliteLastStandActive && !suppressZeoliteLastStandPrompt) {
+    addActivationLog("全てを・・・、この一撃に賭ける！", "crit");
+    showZeoliteLastStandEffect(attacker, slotId);
+    queuePostActivationPlayerAction({
+      attacker,
+      slotId,
+      attackType,
+      enemyIndex: state.enemyIndex,
+      queuedTurn: state.turn,
+      queuedPhase: state.phase,
+      suppressPreemptiveQueue,
+      suppressMinstrelRelayQueue,
+      suppressBerserkerRageEffect,
+      suppressNamiIzayaGuardPrompt,
+      suppressAurumCeriseSupportPrompt,
+      suppressJeffreyCeriseSupportPrompt,
+      suppressVolgramArianaWarriorPrompt,
+      suppressLancelateArianaFollowUpPrompt,
+      suppressLionArianaFollowUpPrompt,
+      suppressMadokasuIzayaAttackBoostPrompt,
+      suppressZeoliteLastStandPrompt: true,
+    });
+    renderAll();
+    return true;
+  }
+
+  if (madokasuIzayaAttackBoostActive && !suppressMadokasuIzayaAttackBoostPrompt) {
+    addActivationLog("さて、そろそろ本気を出すとするか", "crit");
+    queuePostActivationPlayerAction({
+      attacker,
+      slotId,
+      attackType,
+      enemyIndex: state.enemyIndex,
+      queuedTurn: state.turn,
+      queuedPhase: state.phase,
+      suppressPreemptiveQueue,
+      suppressMinstrelRelayQueue,
+      suppressBerserkerRageEffect,
+      suppressNamiIzayaGuardPrompt,
+      suppressAurumCeriseSupportPrompt,
+      suppressJeffreyCeriseSupportPrompt,
+      suppressVolgramArianaWarriorPrompt,
+      suppressLancelateArianaFollowUpPrompt,
+      suppressLionArianaFollowUpPrompt,
+      suppressMadokasuIzayaAttackBoostPrompt: true,
+      suppressZeoliteLastStandPrompt,
+    });
+    renderAll();
+    return true;
+  }
+
+  if (lionArianaFollowUpBoostActive && !suppressLionArianaFollowUpPrompt) {
+    addActivationLog("姫様のためなら、オイラだって・・・！", "crit");
+    queuePostActivationPlayerAction({
+      attacker,
+      slotId,
+      attackType,
+      enemyIndex: state.enemyIndex,
+      queuedTurn: state.turn,
+      queuedPhase: state.phase,
+      suppressPreemptiveQueue,
+      suppressMinstrelRelayQueue,
+      suppressBerserkerRageEffect,
+      suppressNamiIzayaGuardPrompt,
+      suppressAurumCeriseSupportPrompt,
+      suppressJeffreyCeriseSupportPrompt,
+      suppressVolgramArianaWarriorPrompt,
+      suppressLancelateArianaFollowUpPrompt,
+      suppressLionArianaFollowUpPrompt: true,
+      suppressMadokasuIzayaAttackBoostPrompt,
+      suppressZeoliteLastStandPrompt,
+    });
+    renderAll();
+    return true;
+  }
 
   if (lancelateArianaFollowUpBoostActive && !suppressLancelateArianaFollowUpPrompt) {
     addActivationLog("姫のためなら、この命惜しくはない", "crit");
@@ -3272,6 +3720,9 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
       suppressJeffreyCeriseSupportPrompt,
       suppressVolgramArianaWarriorPrompt,
       suppressLancelateArianaFollowUpPrompt: true,
+      suppressLionArianaFollowUpPrompt,
+      suppressMadokasuIzayaAttackBoostPrompt,
+      suppressZeoliteLastStandPrompt,
     });
     renderAll();
     return true;
@@ -3294,6 +3745,9 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
       suppressJeffreyCeriseSupportPrompt,
       suppressVolgramArianaWarriorPrompt: true,
       suppressLancelateArianaFollowUpPrompt,
+      suppressLionArianaFollowUpPrompt,
+      suppressMadokasuIzayaAttackBoostPrompt,
+      suppressZeoliteLastStandPrompt,
     });
     renderAll();
     return true;
@@ -3316,6 +3770,9 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
       suppressJeffreyCeriseSupportPrompt,
       suppressVolgramArianaWarriorPrompt,
       suppressLancelateArianaFollowUpPrompt,
+      suppressLionArianaFollowUpPrompt,
+      suppressMadokasuIzayaAttackBoostPrompt,
+      suppressZeoliteLastStandPrompt,
     });
     renderAll();
     return true;
@@ -3339,6 +3796,9 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
       suppressJeffreyCeriseSupportPrompt,
       suppressVolgramArianaWarriorPrompt,
       suppressLancelateArianaFollowUpPrompt,
+      suppressLionArianaFollowUpPrompt,
+      suppressMadokasuIzayaAttackBoostPrompt,
+      suppressZeoliteLastStandPrompt,
     });
     renderAll();
     return true;
@@ -3362,6 +3822,9 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
       suppressJeffreyCeriseSupportPrompt: true,
       suppressVolgramArianaWarriorPrompt,
       suppressLancelateArianaFollowUpPrompt,
+      suppressLionArianaFollowUpPrompt,
+      suppressMadokasuIzayaAttackBoostPrompt,
+      suppressZeoliteLastStandPrompt,
     });
     renderAll();
     return true;
@@ -3407,6 +3870,9 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
         suppressJeffreyCeriseSupportPrompt,
         suppressVolgramArianaWarriorPrompt,
         suppressLancelateArianaFollowUpPrompt,
+        suppressLionArianaFollowUpPrompt,
+        suppressMadokasuIzayaAttackBoostPrompt,
+        suppressZeoliteLastStandPrompt,
       });
       renderAll();
     };
@@ -3442,6 +3908,9 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
         suppressJeffreyCeriseSupportPrompt,
         suppressVolgramArianaWarriorPrompt,
         suppressLancelateArianaFollowUpPrompt,
+        suppressLionArianaFollowUpPrompt,
+        suppressMadokasuIzayaAttackBoostPrompt,
+        suppressZeoliteLastStandPrompt,
       });
       if (!hasPendingActivationLog()) {
         resolvePendingPostActivationPlayerAction();
@@ -3488,6 +3957,9 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
         suppressJeffreyCeriseSupportPrompt,
         suppressVolgramArianaWarriorPrompt,
         suppressLancelateArianaFollowUpPrompt,
+        suppressLionArianaFollowUpPrompt,
+        suppressMadokasuIzayaAttackBoostPrompt,
+        suppressZeoliteLastStandPrompt,
       });
       renderAll();
     };
@@ -3508,6 +3980,7 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
     aurumCeriseSupportActive && Math.random() < PLAYER_AURUM_CERISE_CHAIN_EXTRA_HIT_RATE;
   const jeffreyCeriseBonusFollowUpTriggered =
     jeffreyCeriseSupportActive && Math.random() < PLAYER_JEFFREY_CERISE_CHAIN_EXTRA_HIT_RATE;
+  const lionArianaBonusFollowUpCount = lionArianaFollowUpBoostActive ? 1 : 0;
   const lancelateArianaBonusFollowUpCount = lancelateArianaFollowUpBoostActive ? 1 : 0;
   const guaranteedFollowUpCount =
     (lancelatePreemptiveActive ? 1 : 0) + (gladiatorFollowUpActive ? 1 : 0);
@@ -3518,6 +3991,7 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
     1 +
     guaranteedFollowUpCount +
     randomFollowUpCount +
+    lionArianaBonusFollowUpCount +
     lancelateArianaBonusFollowUpCount +
     aurumCeriseBonusFollowUpCount +
     jeffreyCeriseBonusFollowUpCount;
@@ -3534,16 +4008,17 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
 
   const attackLabel = getAttackLabelByType(attackType);
   const critLabel = playerAttack.critical ? " クリティカル" : "";
+  const playerAttackAttributeSuffix = getAttributeLogSuffix(attacker, currentEnemy, true);
   if (totalHits > 1) {
     addLog(
       `${getCurrentTurnLabel()} ${totalHits}回攻撃 1撃目(${attackLabel}): ${attacker.name} が ${playerAttack.damage} ダメージ。` +
-        ` 敵HP ${nextEnemyHp}/${currentEnemy.hp}.${critLabel}`,
+        ` 敵HP ${nextEnemyHp}/${currentEnemy.hp}.${critLabel}${playerAttackAttributeSuffix}`,
       playerAttack.critical ? "crit" : "good"
     );
   } else {
     addLog(
       `${getCurrentTurnLabel()} ${attackLabel}攻撃: ${attacker.name} が ${playerAttack.damage} ダメージ。` +
-        ` 敵HP ${nextEnemyHp}/${currentEnemy.hp}.${critLabel}`,
+        ` 敵HP ${nextEnemyHp}/${currentEnemy.hp}.${critLabel}${playerAttackAttributeSuffix}`,
       playerAttack.critical ? "crit" : ""
     );
   }
@@ -3568,7 +4043,7 @@ function resolvePlayerAttackAction(attacker, slotId, currentEnemy, attackType, o
     addActivationLog(
       `${hitIndex === 2 ? "追撃発動" : "連撃継続"}: ${totalHits}回攻撃 ${hitIndex}撃目(${attackLabel}) ` +
         `${attacker.name} が ${followUpAttack.damage} ダメージ。` +
-        ` 敵HP ${nextEnemyHpAfterFollowUp}/${currentEnemy.hp}.${followUpCritLabel}`,
+        ` 敵HP ${nextEnemyHpAfterFollowUp}/${currentEnemy.hp}.${followUpCritLabel}${playerAttackAttributeSuffix}`,
       followUpAttack.critical ? "crit" : "good"
     );
     state.enemyHp = nextEnemyHpAfterFollowUp;
@@ -4023,12 +4498,16 @@ function canTriggerArianaLancelateFollowUpBoost(card) {
   );
 }
 
-function canTriggerArianaLionRearArcherBoost(card) {
+function canTriggerArianaLionFollowUpBoost(card) {
   return Boolean(
     card &&
       isCharacterCard(card, PLAYER_LION_CHARACTER_ID) &&
       hasCharacterOnBoard(PLAYER_ARIANA_CHARACTER_ID)
   );
+}
+
+function canTriggerArianaLionRearArcherBoost(card) {
+  return canTriggerArianaLionFollowUpBoost(card);
 }
 
 function canTriggerLunaStarWisdomRecovery(card, slotId) {
@@ -4045,6 +4524,34 @@ function getNamiIzayaAttackRate(card, attackType = "physical") {
   if (!isCharacterCard(card, PLAYER_IZAYA_CHARACTER_ID)) return 1;
   if (!hasCharacterOnBoard(PLAYER_NAMI_CHARACTER_ID)) return 1;
   return PLAYER_NAMI_IZAYA_ATTACK_RATE;
+}
+
+function canTriggerIzayaMadokasuAttackBoost(card, attackType = "physical") {
+  const isPhysicalLikeAttack = attackType === "physical" || attackType === "berserkerRage";
+  return Boolean(
+    isPhysicalLikeAttack &&
+      card &&
+      isCharacterCard(card, PLAYER_MADOKASU_CHARACTER_ID) &&
+      hasCharacterOnBoard(PLAYER_IZAYA_CHARACTER_ID)
+  );
+}
+
+function getMadokasuIzayaAttackRate(card, attackType = "physical") {
+  if (!canTriggerIzayaMadokasuAttackBoost(card, attackType)) return 1;
+  return PLAYER_MADOKASU_IZAYA_ATTACK_RATE;
+}
+
+function canTriggerZeoliteLastStand(card) {
+  return Boolean(
+    card &&
+      isCharacterCard(card, PLAYER_ZEOLITE_CHARACTER_ID) &&
+      Math.floor(state.playerHp) === 1
+  );
+}
+
+function getZeoliteLastStandAttackRate(card) {
+  if (!canTriggerZeoliteLastStand(card)) return 1;
+  return PLAYER_ZEOLITE_LAST_STAND_RATE;
 }
 
 function isKnownJobTag(jobName) {
@@ -4155,11 +4662,24 @@ function canUseHolyRearHeal(card) {
   );
 }
 
+function hasNativeWizardOnBoard() {
+  return Object.values(state.board).some((boardCard) => boardCard && hasNativeJobTag(boardCard, "ウィザード"));
+}
+
+function canTriggerLionWizardEnchantSupport(card) {
+  return Boolean(
+    card &&
+      isCharacterCard(card, PLAYER_LION_CHARACTER_ID) &&
+      hasNativeWizardOnBoard()
+  );
+}
+
 function canUseStrategistEnchant(card) {
   return Boolean(
     card &&
       (hasAnyJobTag(card, ["ソーディアン", "グラディエーター", "ランサー", "マジックナイト"]) ||
-        canTriggerAurumCeriseSupport(card))
+        canTriggerAurumCeriseSupport(card) ||
+        canTriggerLionWizardEnchantSupport(card))
   );
 }
 
@@ -4369,27 +4889,39 @@ function resolveHolyTwinWingsAttack(attacker, slotId, currentEnemy) {
   if (!currentEnemy || state.enemyHp <= 0) return false;
 
   const { leftWingCard, leftWingSlotId } = partner;
-  const holyWingsAttack = calculateAttackDamageByType(leftWingCard, leftWingSlotId, "physical", currentEnemy);
-  const nextEnemyHp = Math.max(0, state.enemyHp - holyWingsAttack.damage);
-  const holyWingsCritLabel = holyWingsAttack.critical ? " クリティカル" : "";
-  addActivationLog(
-    `神聖なる両翼発動: ${attacker.name}(右翼) に呼応し ${leftWingCard.name}(左翼) が追撃。` +
-      ` ${holyWingsAttack.damage} ダメージ。敵HP ${nextEnemyHp}/${currentEnemy.hp}.${holyWingsCritLabel}`,
-    holyWingsAttack.critical ? "crit" : "good"
-  );
-  state.enemyHp = nextEnemyHp;
-  playPlayerAttackEffect(leftWingCard, leftWingSlotId, holyWingsAttack.damage, "physical", holyWingsAttack.critical, {
-    delayMs: PLAYER_FOLLOW_UP_EFFECT_DELAY_MS,
-    hitLabel: "WING",
-    autoScroll: false,
-    breakdown: holyWingsAttack.breakdown,
-  });
+  const holyWingsAttributeSuffix = getAttributeLogSuffix(leftWingCard, currentEnemy, true);
+  const holyWingsHitCount = isCharacterCard(leftWingCard, PLAYER_LANCELATE_PREEMPTIVE_CARD_ID) ? 2 : 1;
+  for (let holyWingsHitIndex = 1; holyWingsHitIndex <= holyWingsHitCount; holyWingsHitIndex += 1) {
+    const holyWingsAttack = calculateAttackDamageByType(leftWingCard, leftWingSlotId, "physical", currentEnemy);
+    const nextEnemyHp = Math.max(0, state.enemyHp - holyWingsAttack.damage);
+    const holyWingsCritLabel = holyWingsAttack.critical ? " クリティカル" : "";
+    const holyWingsHitLabel = holyWingsHitCount > 1 ? `WING ${holyWingsHitIndex}` : "WING";
+    const holyWingsLogText =
+      holyWingsHitIndex === 1
+        ? `神聖なる両翼発動: ${attacker.name}(右翼) に呼応し ${leftWingCard.name}(左翼) が追撃。` +
+          `${holyWingsHitCount > 1 ? ` ランセレイト連撃(${holyWingsHitCount}回)。` : ""}` +
+          ` ${holyWingsAttack.damage} ダメージ。敵HP ${nextEnemyHp}/${currentEnemy.hp}.${holyWingsCritLabel}${holyWingsAttributeSuffix}`
+        : `神聖なる両翼連撃: ${leftWingCard.name}(左翼) ${holyWingsHitIndex}撃目で ${holyWingsAttack.damage} ダメージ。` +
+          `敵HP ${nextEnemyHp}/${currentEnemy.hp}.${holyWingsCritLabel}${holyWingsAttributeSuffix}`;
 
-  if (state.enemyHp <= 0) {
-    onEnemyDefeated(currentEnemy, {
-      finalAttackMessage: `神聖なる両翼(${attacker.name}+${leftWingCard.name})で ${holyWingsAttack.damage} ダメージ`,
+    addActivationLog(holyWingsLogText, holyWingsAttack.critical ? "crit" : "good");
+    state.enemyHp = nextEnemyHp;
+    playPlayerAttackEffect(leftWingCard, leftWingSlotId, holyWingsAttack.damage, "physical", holyWingsAttack.critical, {
+      delayMs: PLAYER_FOLLOW_UP_EFFECT_DELAY_MS * holyWingsHitIndex,
+      hitLabel: holyWingsHitLabel,
+      autoScroll: false,
+      breakdown: holyWingsAttack.breakdown,
     });
-    return true;
+
+    if (state.enemyHp <= 0) {
+      onEnemyDefeated(currentEnemy, {
+        finalAttackMessage:
+          holyWingsHitCount > 1
+            ? `神聖なる両翼(${attacker.name}+${leftWingCard.name}) ${holyWingsHitIndex}撃目で ${holyWingsAttack.damage} ダメージ`
+            : `神聖なる両翼(${attacker.name}+${leftWingCard.name})で ${holyWingsAttack.damage} ダメージ`,
+      });
+      return true;
+    }
   }
 
   return false;
@@ -4585,7 +5117,7 @@ function canTriggerFrontSwordianCounter(enemyAction, enemy) {
 
   const frontCard = state.board.front;
   if (!frontCard || !frontCard.stats) return false;
-  if (!hasJobTag(frontCard, "ソーディアン")) return false;
+  if (!hasAnyJobTag(frontCard, ["ソーディアン", "ベルセルク"])) return false;
 
   return frontCard.stats.spd > enemy.stats.spd;
 }
@@ -4599,7 +5131,7 @@ function resolveFrontSwordianCounter(enemyAction, receivedDamage) {
   const frontCard = state.board.front;
   if (!frontCard) return false;
 
-  const baseCounterDamage = Math.max(0, Math.floor(receivedDamage / 3));
+  const baseCounterDamage = Math.max(0, Math.floor(receivedDamage * 2));
   const counterDamageCut = applyEnemyPlayerAttackCut(baseCounterDamage, currentEnemy, "physical");
   const counterDamage = counterDamageCut.damage;
   if (counterDamage <= 0) return false;
@@ -4610,7 +5142,7 @@ function resolveFrontSwordianCounter(enemyAction, receivedDamage) {
     : "";
   addActivationLog(
     `前衛反撃発動: ${frontCard.name}(SPD ${frontCard.stats.spd}) が` +
-      ` 被ダメージ${receivedDamage}の1/3=${baseCounterDamage}${counterCutText}を反射。` +
+      ` 被ダメージ${receivedDamage}の2倍=${baseCounterDamage}${counterCutText}を反射。` +
       ` 敵HP ${nextEnemyHp}/${currentEnemy.hp}.`,
     "good"
   );
@@ -4764,6 +5296,7 @@ function queueEnemyActionConfirmation(enemyAction, guardChoice = null, options =
   if (!enemyAction) return false;
   const preview = previewEnemyAction(enemyAction, guardChoice);
   if (!preview) return false;
+  const enemyAttackAttributeSuffix = getAttributeLogSuffix(getCurrentEnemy(), enemyAction.targetCard, false);
 
   if (preview.ironWallFormation && !suppressIronWallPrompt) {
     addActivationLog("我らが盾は、決して砕けない！", "crit");
@@ -4832,7 +5365,7 @@ function queueEnemyActionConfirmation(enemyAction, guardChoice = null, options =
   }
   addLog(
     `敵の${preview.enemyAttackLabel}反撃: ${SLOT_BY_ID[enemyAction.targetSlot].label}(${enemyAction.targetCard.name})に` +
-      ` ${preview.damage} ダメージ。味方HP ${preview.nextPlayerHp}/${getPlayerMaxHp()}.` +
+      ` ${preview.damage} ダメージ。味方HP ${preview.nextPlayerHp}/${getPlayerMaxHp()}.${enemyAttackAttributeSuffix}` +
       `${enemyAction.rangedMitigationApplied ? " 遠隔攻撃効果で被ダメージ30%カット。" : ""}` +
       `${preview.frontGuardianReduced > 0 ? ` 前衛守護で-${preview.frontGuardianReduced}軽減。` : ""}` +
       `${preview.ironWallReduced > 0 ? ` 鉄壁の陣で-${preview.ironWallReduced}軽減。` : ""}` +
@@ -4883,6 +5416,8 @@ function applyEnemyAction(enemyAction, guardChoice = null, options = {}) {
   let assaultBonus = 0;
   let darkAttackBonus = 0;
   let lancelateEvasionTriggered = false;
+  const currentEnemy = getCurrentEnemy();
+  const enemyAttackAttributeSuffix = getAttributeLogSuffix(currentEnemy, enemyAction.targetCard, false);
   const enemyAttackLabel = getEnemyCounterAttackLabel(enemyAction);
   const choiceLabel = guardChoice === "magic" ? "魔法防御" : "物理防御";
   const guarded = guardChoice && guardChoice === enemyAction.attackType;
@@ -4923,7 +5458,6 @@ function applyEnemyAction(enemyAction, guardChoice = null, options = {}) {
       damage = Math.max(0, Math.floor(damage * ENEMY_DARK_ATTACK_DAMAGE_RATE));
       darkAttackBonus = Math.max(0, damage - beforeDarkAttack);
     }
-    const currentEnemy = getCurrentEnemy();
     if (canTriggerLancelateEvasion(enemyAction, currentEnemy) && Math.random() < PLAYER_LANCELATE_EVASION_TRIGGER_RATE) {
       damage = 0;
       assaultBonus = 0;
@@ -4997,7 +5531,7 @@ function applyEnemyAction(enemyAction, guardChoice = null, options = {}) {
     }
     addLog(
       `敵の${enemyAttackLabel}反撃: ${SLOT_BY_ID[enemyAction.targetSlot].label}(${enemyAction.targetCard.name})に` +
-        ` ${damage} ダメージ。味方HP ${finalPlayerHp}/${getPlayerMaxHp()}.` +
+        ` ${damage} ダメージ。味方HP ${finalPlayerHp}/${getPlayerMaxHp()}.${enemyAttackAttributeSuffix}` +
         `${enemyAction.rangedMitigationApplied ? " 遠隔攻撃効果で被ダメージ30%カット。" : ""}` +
         `${frontGuardianReduced > 0 ? ` 前衛守護で-${frontGuardianReduced}軽減。` : ""}` +
         `${ironWallReduced > 0 ? ` 鉄壁の陣で-${ironWallReduced}軽減。` : ""}` +
@@ -5248,6 +5782,7 @@ function onEnemyDefeated(defeatedEnemy, options = {}) {
   const { finalAttackMessage = "" } = options;
   state.pendingBoardRecycle = false;
   updateMoraleForTurnEnd();
+  state.score += getEnemyDefeatScoreGain();
   clearEnemyTransitionEffects({ resetState: false });
 
   state.pendingEnemyAction = null;
@@ -5494,6 +6029,63 @@ function applyEnemyPlayerAttackCut(damage, enemy, attackStyle) {
   };
 }
 
+function getEntityAttribute(entity) {
+  if (!entity || typeof entity !== "object") return "";
+  if (typeof entity.attribute === "string" && entity.attribute.trim()) {
+    return entity.attribute.trim();
+  }
+  if (typeof entity.subtitle === "string") {
+    const match = entity.subtitle.match(/属性:\s*([^/\s]+)/);
+    if (match && match[1]) {
+      return String(match[1]).trim();
+    }
+  }
+  return "";
+}
+
+function hasAttributeAdvantage(attackerAttribute, defenderAttribute) {
+  if (!attackerAttribute || !defenderAttribute) return false;
+  const advantageTargets = ATTRIBUTE_ADVANTAGE_TABLE[attackerAttribute];
+  return Array.isArray(advantageTargets) && advantageTargets.includes(defenderAttribute);
+}
+
+function getAttributeDamageRate(attackerEntity, defenderEntity) {
+  const attackerAttribute = getEntityAttribute(attackerEntity);
+  const defenderAttribute = getEntityAttribute(defenderEntity);
+  if (!attackerAttribute || !defenderAttribute || attackerAttribute === defenderAttribute) {
+    return ATTRIBUTE_NEUTRAL_RATE;
+  }
+  if (hasAttributeAdvantage(attackerAttribute, defenderAttribute)) {
+    return ATTRIBUTE_ADVANTAGE_RATE;
+  }
+  if (hasAttributeAdvantage(defenderAttribute, attackerAttribute)) {
+    return ATTRIBUTE_DISADVANTAGE_RATE;
+  }
+  return ATTRIBUTE_NEUTRAL_RATE;
+}
+
+function getAttributeMatchupLabel(attackerEntity, defenderEntity) {
+  const attributeRate = getAttributeDamageRate(attackerEntity, defenderEntity);
+  if (attributeRate > ATTRIBUTE_NEUTRAL_RATE) return "有利";
+  if (attributeRate < ATTRIBUTE_NEUTRAL_RATE) return "不利";
+  return "";
+}
+
+function getPlayerPerspectiveAttributeLabel(attackerEntity, defenderEntity, attackerIsPlayer = true) {
+  const matchupLabel = getAttributeMatchupLabel(attackerEntity, defenderEntity);
+  if (!matchupLabel) return "";
+  if (attackerIsPlayer) {
+    return matchupLabel === "有利" ? "味方有利" : "敵有利";
+  }
+  return matchupLabel === "有利" ? "敵有利" : "味方有利";
+}
+
+function getAttributeLogSuffix(attackerEntity, defenderEntity, attackerIsPlayer = true) {
+  const perspectiveLabel = getPlayerPerspectiveAttributeLabel(attackerEntity, defenderEntity, attackerIsPlayer);
+  if (!perspectiveLabel) return "";
+  return ` （属性:${perspectiveLabel}）`;
+}
+
 function calculatePlayerDamage(card, slotId, attackType, enemy, options = {}) {
   const { magicBoostRate = 1, physicalBoostRate = 1, forceIgnoreDefense = false } = options;
   const isMagicAttack = attackType === "magic" || attackType === "ancientMagic";
@@ -5529,6 +6121,8 @@ function calculatePlayerDamage(card, slotId, attackType, enemy, options = {}) {
   const magicAttackRate = isMagicAttack ? Math.max(1, magicBoostRate) : 1;
   const fourthTurnMeleeJobRate = getFourthTurnMeleeJobPhysicalBoostRate(card, attackType);
   const namiIzayaAttackRate = getNamiIzayaAttackRate(card, attackType);
+  const madokasuIzayaAttackRate = getMadokasuIzayaAttackRate(card, attackType);
+  const zeoliteLastStandRate = getZeoliteLastStandAttackRate(card);
   const warriorMoraleBase =
     !isMagicAttack && hasJobTag(card, "ウォーリア") ? Math.max(0, Math.floor(state.morale)) : 0;
   const warriorMoraleRate =
@@ -5538,7 +6132,10 @@ function calculatePlayerDamage(card, slotId, attackType, enemy, options = {}) {
   const warriorMoraleBonus = Math.max(0, Math.floor(warriorMoraleBase * warriorMoraleRate));
   const attackBoostRate = isMagicAttack
     ? 1
-    : Math.max(1, physicalBoostRate) * Math.max(1, fourthTurnMeleeJobRate) * Math.max(1, namiIzayaAttackRate);
+    : Math.max(1, physicalBoostRate) *
+      Math.max(1, fourthTurnMeleeJobRate) *
+      Math.max(1, namiIzayaAttackRate) *
+      Math.max(1, madokasuIzayaAttackRate);
 
   const baseDamage = Math.max(
     18,
@@ -5548,7 +6145,10 @@ function calculatePlayerDamage(card, slotId, attackType, enemy, options = {}) {
   const afterTypeBoostDamage = Math.max(1, Math.floor(afterMoraleDamage * attackBoostRate));
   const afterMagicBoost = Math.max(1, Math.floor(afterTypeBoostDamage * magicAttackRate));
   const afterWarriorMoraleBonus = Math.max(1, Math.floor(afterMagicBoost + warriorMoraleBonus));
-  const enemyDamageCut = applyEnemyPlayerAttackCut(afterWarriorMoraleBonus, enemy, outgoingAttackStyle);
+  const afterZeoliteLastStandDamage = Math.max(1, Math.floor(afterWarriorMoraleBonus * zeoliteLastStandRate));
+  const attributeRate = getAttributeDamageRate(card, enemy);
+  const afterAttributeDamage = Math.max(1, Math.floor(afterZeoliteLastStandDamage * attributeRate));
+  const enemyDamageCut = applyEnemyPlayerAttackCut(afterAttributeDamage, enemy, outgoingAttackStyle);
   const damage = enemyDamageCut.damage;
   const foundationDamage = Math.max(1, Math.floor(Math.max(1, basePower - enemyGuard)));
   const afterDivine = Math.max(1, Math.floor(foundationDamage * divineRate));
@@ -5573,12 +6173,17 @@ function calculatePlayerDamage(card, slotId, attackType, enemy, options = {}) {
       moraleRate,
       attackBoostRate,
       namiIzayaAttackRate,
+      madokasuIzayaAttackRate,
       magicAttackRate,
       afterAttackBoost,
       afterMagicBoost,
       warriorMoraleRate,
       warriorMoraleBonus,
       afterWarriorMoraleBonus,
+      zeoliteLastStandRate,
+      afterZeoliteLastStandDamage,
+      attributeRate,
+      afterAttributeDamage,
       enemyDamageCutRate: enemyDamageCut.cutRate,
       enemyDamageCutApplied: enemyDamageCut.cutApplied,
       enemyDamageCutSourceName: enemyDamageCut.cutSourceName,
@@ -5729,6 +6334,7 @@ function calculateLifeBurstDamage(card, slotId, enemy) {
 
 function calculateBerserkerRageDamage(card, enemy) {
   const atk = Math.max(0, Math.floor(card?.stats?.atk ?? 0));
+  const madokasuIzayaAttackRate = getMadokasuIzayaAttackRate(card, "berserkerRage");
   const bonusFromAtk = Math.max(
     0,
     Math.floor((atk - PLAYER_BERSERKER_RAGE_ATK_BASE) * PLAYER_BERSERKER_RAGE_ATK_BONUS_RATE)
@@ -5736,7 +6342,11 @@ function calculateBerserkerRageDamage(card, enemy) {
   const beforeDefenseDamage = Math.max(1, PLAYER_BERSERKER_RAGE_BASE_DAMAGE + bonusFromAtk);
   const enemyGuard = Math.max(0, Math.floor(Math.max(0, enemy?.stats?.def ?? 0) * 0.86));
   const afterDefenseDamage = Math.max(1, Math.floor(beforeDefenseDamage - enemyGuard));
-  const enemyDamageCut = applyEnemyPlayerAttackCut(afterDefenseDamage, enemy, "physical");
+  const afterMadokasuIzayaBoostDamage = Math.max(
+    1,
+    Math.floor(afterDefenseDamage * Math.max(1, madokasuIzayaAttackRate))
+  );
+  const enemyDamageCut = applyEnemyPlayerAttackCut(afterMadokasuIzayaBoostDamage, enemy, "physical");
   const beforeBerserkerSwayDamage = enemyDamageCut.damage;
   const berserkerSwayApplied = beforeBerserkerSwayDamage >= PLAYER_BERSERKER_RAGE_SWAY_TRIGGER_DAMAGE;
   const berserkerSwayValue = berserkerSwayApplied
@@ -5753,13 +6363,16 @@ function calculateBerserkerRageDamage(card, enemy) {
       type: "berserkerRageFormula",
       baseDamage: PLAYER_BERSERKER_RAGE_BASE_DAMAGE,
       atk,
+      rawAtk: atk,
+      madokasuIzayaAttackRate,
       atkBase: PLAYER_BERSERKER_RAGE_ATK_BASE,
       atkBonusRate: PLAYER_BERSERKER_RAGE_ATK_BONUS_RATE,
       bonusFromAtk,
       beforeDefenseDamage,
       enemyGuard,
       afterDefenseDamage,
-      beforeEnemyDamageCut: afterDefenseDamage,
+      afterMadokasuIzayaBoostDamage,
+      beforeEnemyDamageCut: afterMadokasuIzayaBoostDamage,
       enemyDamageCutRate: enemyDamageCut.cutRate,
       enemyDamageCutApplied: enemyDamageCut.cutApplied,
       enemyDamageCutSourceName: enemyDamageCut.cutSourceName,
@@ -5832,6 +6445,7 @@ function playPlayerAttackEffect(
   const { delayMs = 0, hitLabel = "", autoScroll = true, breakdown = null } = options;
   const sourceEl = boardSlotElements[slotId];
   const targetEl = enemyArtSlotEl ?? enemyArtImageEl;
+
   playAttackEffectVisual({
     sourceEl,
     targetEl,
@@ -6022,6 +6636,61 @@ function showBerserkerRageEffect(card, slotId, options = {}) {
 
   rageFx.append(aura, flare, cardHover);
   layer.appendChild(rageFx);
+  document.body.appendChild(layer);
+
+  window.setTimeout(() => {
+    layer.remove();
+  }, durationMs + 220);
+
+  return durationMs;
+}
+
+function showZeoliteLastStandEffect(card, slotId, options = {}) {
+  if (!card || !slotId) return 0;
+
+  const sourceEl = boardSlotElements[slotId];
+  if (!sourceEl || !document.body) return 0;
+
+  const durationMs = Math.max(520, Math.floor(options.durationMs ?? ZEOLITE_LAST_STAND_EFFECT_MS));
+  const sourceRect = sourceEl.getBoundingClientRect();
+  if (!sourceRect.width || !sourceRect.height) return 0;
+
+  const centerX = sourceRect.left + sourceRect.width / 2;
+  const centerY = sourceRect.top + sourceRect.height / 2;
+  flashElement(sourceEl, "zeolite-last-stand-glow", durationMs);
+
+  document.body.style.setProperty("--zeolite-last-stand-ms", `${durationMs}ms`);
+  document.body.classList.remove("zeolite-last-stand-sky");
+  void document.body.offsetWidth;
+  document.body.classList.add("zeolite-last-stand-sky");
+  window.setTimeout(() => {
+    if (!document.body) return;
+    document.body.classList.remove("zeolite-last-stand-sky");
+  }, durationMs + 180);
+
+  const layer = document.createElement("div");
+  layer.className = "battle-fx-layer";
+
+  const zealFx = document.createElement("div");
+  zealFx.className = "attack-fx-zeolite-last-stand";
+  zealFx.style.left = `${centerX}px`;
+  zealFx.style.top = `${centerY}px`;
+  zealFx.style.setProperty("--zeolite-last-stand-duration", `${durationMs}ms`);
+
+  const aura = document.createElement("div");
+  aura.className = "attack-fx-zeolite-last-stand-aura";
+  const flare = document.createElement("div");
+  flare.className = "attack-fx-zeolite-last-stand-flare";
+  const cardHover = document.createElement("div");
+  cardHover.className = "attack-fx-zeolite-last-stand-card";
+
+  const cardImage = document.createElement("img");
+  cardImage.src = PLAYER_CARD_IMAGE_BY_ID[card.id] ?? "";
+  cardImage.alt = `${card.name} の背水演出`;
+  cardHover.appendChild(cardImage);
+
+  zealFx.append(aura, flare, cardHover);
+  layer.appendChild(zealFx);
   document.body.appendChild(layer);
 
   window.setTimeout(() => {
@@ -7374,14 +8043,13 @@ function buildPreAttackDamageSteps(finalDamage, breakdown = null) {
     const atk = Math.max(0, Math.floor(breakdown.atk ?? 0));
     const atkBase = Math.max(0, Math.floor(breakdown.atkBase ?? PLAYER_BERSERKER_RAGE_ATK_BASE));
     const atkBonusRate = Math.max(0, Math.floor(breakdown.atkBonusRate ?? PLAYER_BERSERKER_RAGE_ATK_BONUS_RATE));
-    const beforeDefenseDamage = Math.max(
-      1,
-      Math.floor(breakdown.beforeDefenseDamage ?? breakdown.beforeEnemyDamageCut ?? baseDamage)
-    );
+    const beforeDefenseDamage = Math.max(1, Math.floor(breakdown.beforeDefenseDamage ?? baseDamage));
     const enemyGuard = Math.max(0, Math.floor(breakdown.enemyGuard ?? 0));
-    const afterDefenseDamage = Math.max(
+    const afterDefenseDamage = Math.max(1, Math.floor(breakdown.afterDefenseDamage ?? beforeDefenseDamage));
+    const madokasuIzayaAttackRate = Math.max(1, Number(breakdown.madokasuIzayaAttackRate) || 1);
+    const afterMadokasuIzayaBoostDamage = Math.max(
       1,
-      Math.floor(breakdown.afterDefenseDamage ?? breakdown.beforeEnemyDamageCut ?? beforeDefenseDamage)
+      Math.floor(breakdown.afterMadokasuIzayaBoostDamage ?? breakdown.beforeEnemyDamageCut ?? afterDefenseDamage)
     );
     const enemyDamageCutRate = Number(breakdown.enemyDamageCutRate ?? 1);
     const enemyDamageCutApplied = Boolean(breakdown.enemyDamageCutApplied && enemyDamageCutRate < 1);
@@ -7400,6 +8068,14 @@ function buildPreAttackDamageSteps(finalDamage, breakdown = null) {
       { label: `固定値 ${baseDamage}`, value: baseDamage },
       { label: `${baseDamage} + (ATK ${atk} - ${atkBase}) x ${atkBonusRate}`, value: beforeDefenseDamage },
       ...(enemyGuard > 0 ? [{ label: `敵DEF減衰 -${enemyGuard}`, value: afterDefenseDamage }] : []),
+      ...(madokasuIzayaAttackRate > 1
+        ? [
+            {
+              label: `イザヤ連携 x${formatRateLabel(madokasuIzayaAttackRate)}`,
+              value: afterMadokasuIzayaBoostDamage,
+            },
+          ]
+        : []),
       ...(enemyDamageCutApplied
         ? [
             {
@@ -7597,6 +8273,21 @@ function buildPreAttackDamageSteps(finalDamage, breakdown = null) {
     });
   }
 
+  if (Math.abs((breakdown.zeoliteLastStandRate ?? 1) - 1) > 0.001) {
+    steps.push({
+      label: `ゼオライト背水 x${formatRateLabel(breakdown.zeoliteLastStandRate)}`,
+      value: Math.max(1, Math.floor(breakdown.afterZeoliteLastStandDamage ?? damage)),
+    });
+  }
+
+  if (Math.abs((breakdown.attributeRate ?? 1) - 1) > 0.001) {
+    const attributeLabel = breakdown.attributeRate > 1 ? "属性有利" : "属性不利";
+    steps.push({
+      label: `${attributeLabel} x${formatRateLabel(breakdown.attributeRate)}`,
+      value: Math.max(1, Math.floor(breakdown.afterAttributeDamage ?? damage)),
+    });
+  }
+
   if (breakdown.enemyDamageCutApplied && Math.abs((breakdown.enemyDamageCutRate ?? 1) - 1) > 0.001) {
     const enemyCutTypeLabel = breakdown.enemyDamageCutAttackStyle === "magic" ? "魔法" : "物理";
     const enemyCutSourceName = breakdown.enemyDamageCutSourceName || "敵";
@@ -7770,6 +8461,8 @@ function calculateEnemyDamage(targetCard, slotId, attackType, enemy, options = {
   const guardPoint = attackType === "magic" ? targetCard.stats.spr * 0.62 : targetCard.stats.def * 0.62;
 
   let damage = Math.max(12, Math.floor((basePower - guardPoint) * divineRate * formationRate));
+  const attributeRate = getAttributeDamageRate(enemy, targetCard);
+  damage = Math.max(1, Math.floor(damage * attributeRate));
 
   let rangedMitigationApplied = false;
   if (isFourthTurnRangedJob(sourceCard)) {
@@ -8031,6 +8724,9 @@ function renderStatus() {
   }
   if (playerMpValueEl) {
     playerMpValueEl.textContent = String(Math.max(0, Math.min(PLAYER_MP_MAX, state.mp)));
+  }
+  if (playerScoreValueEl) {
+    playerScoreValueEl.textContent = formatScoreValue(state.score);
   }
 
   const displayTurn = getDisplayTurnValue();

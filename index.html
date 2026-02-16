@@ -24,10 +24,25 @@
         <p id="title-primary-tap" class="title-screen-tap">タイトル画面をクリック</p>
         <div id="title-menu" class="title-menu" hidden>
           <button id="title-start-btn" class="title-menu-btn" type="button">スタート</button>
+          <button id="title-continue-btn" class="title-menu-btn" type="button">コンティニュー</button>
           <button id="title-arena-btn" class="title-menu-btn" type="button">闘技場</button>
           <button id="title-password-btn" class="title-menu-btn" type="button">パスワード</button>
           <button id="title-settings-btn" class="title-menu-btn" type="button">設定</button>
+          <button id="title-guide-btn" class="title-menu-btn" type="button">説明書</button>
         </div>
+
+        <section id="title-start-confirm-panel" class="title-start-confirm-panel" hidden aria-label="スタート確認">
+          <header class="title-start-confirm-head">
+            <p class="title-start-confirm-kicker">start confirmation</p>
+            <h2>スタート確認</h2>
+          </header>
+          <p class="title-start-confirm-note">データは消去されますが、よろしいですか？</p>
+          <p class="title-start-confirm-note">※コンティニューデータのみ消去します。</p>
+          <div class="title-start-confirm-actions">
+            <button id="title-start-confirm-yes-btn" class="title-start-confirm-yes-btn" type="button">はい</button>
+            <button id="title-start-confirm-no-btn" class="title-start-confirm-no-btn" type="button">いいえ</button>
+          </div>
+        </section>
         <p id="title-subnote" class="title-subnote" hidden></p>
 
         <section id="title-password-panel" class="title-password-panel" hidden aria-label="パスワード入力">
@@ -205,6 +220,7 @@
         <article class="combatant player board-player-status">
           <p class="combatant-label">player</p>
           <h2>神域連合</h2>
+          <p class="player-score-chip">SCORE <strong id="player-score-value">0.0</strong></p>
           <p class="morale-value">
             <span>士気: <strong id="player-morale-value">50 / 1000</strong></span>
             <span>MP: <strong id="player-mp-value">50</strong></span>
