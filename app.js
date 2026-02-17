@@ -7145,10 +7145,14 @@ function playAttackEffectVisual({
     const targetRect = targetEl.getBoundingClientRect();
     if (!sourceRect.width || !targetRect.width) return;
 
+    const mobileLayoutEnabled = Boolean(document.body && document.body.classList.contains("mobile-layout"));
     const startX = sourceRect.left + sourceRect.width / 2;
     const startY = sourceRect.top + sourceRect.height / 2;
     const endX = targetRect.left + targetRect.width / 2;
-    const endY = targetRect.top + targetRect.height / 2;
+    const endY =
+      incomingDamage && mobileLayoutEnabled
+        ? targetRect.top + Math.max(24, targetRect.height * 0.36)
+        : targetRect.top + targetRect.height / 2;
     const dx = endX - startX;
     const dy = endY - startY;
 
