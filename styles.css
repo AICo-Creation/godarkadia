@@ -6769,3 +6769,121 @@ body.turn-multiple-3:not(.turn-multiple-4):not(.turn-multiple-5):not(.turn-multi
     width: min(82vw, 268px);
   }
 }
+
+body.mobile-layout .app-shell {
+  width: min(480px, 96vw);
+  margin: 14px auto 34px;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "hero"
+    "status"
+    "board"
+    "command"
+    "log";
+  gap: 12px;
+}
+
+body.mobile-layout .hero {
+  padding: 14px 14px;
+}
+
+body.mobile-layout .brand-title {
+  font-size: clamp(1.55rem, 5.8vw, 2.2rem);
+  letter-spacing: 0.12em;
+}
+
+body.mobile-layout .brand-credit {
+  font-size: 0.64rem;
+  letter-spacing: 0.12em;
+}
+
+body.mobile-layout .panel {
+  padding: 12px;
+}
+
+body.mobile-layout .status-panel {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+body.mobile-layout .enemy-layout {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+body.mobile-layout .enemy-stats {
+  gap: 4px;
+}
+
+body.mobile-layout .enemy-stats div {
+  padding: 5px;
+}
+
+body.mobile-layout .enemy-stats dd {
+  font-size: 0.8rem;
+}
+
+body.mobile-layout .turn-panel {
+  min-height: 72px;
+}
+
+body.mobile-layout .turn-value {
+  font-size: 1.42rem;
+}
+
+body.mobile-layout .board-player-status {
+  margin-bottom: 8px;
+}
+
+body.mobile-layout .player-score-chip {
+  width: 110px;
+  top: 10px;
+  right: 10px;
+  font-size: 0.66rem;
+}
+
+body.mobile-layout .player-score-chip strong {
+  font-size: 0.86rem;
+}
+
+body.mobile-layout .morale-value {
+  font-size: 0.82rem;
+  gap: 8px;
+  white-space: normal;
+  flex-wrap: wrap;
+}
+
+body.mobile-layout .board-row {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 8px;
+}
+
+body.mobile-layout .board-slot {
+  min-height: 122px;
+  border-radius: 10px;
+  padding: 6px;
+  gap: 4px;
+}
+
+body.mobile-layout .slot-role {
+  font-size: 0.66rem;
+}
+
+body.mobile-layout .mini-card-compact {
+  border-radius: 8px;
+  padding: 5px;
+  gap: 4px;
+}
+
+body.mobile-layout .mini-card-compact .mini-card-head h3 {
+  font-size: 0.72rem;
+}
+
+body.mobile-layout .command-buttons {
+  gap: 8px;
+}
+
+body.mobile-layout .btn {
+  padding: 10px 11px;
+}

@@ -726,6 +726,8 @@ const titleSettingsPanelEl = document.getElementById("title-settings-panel");
 const titleSettingsBackBtnEl = document.getElementById("title-settings-back-btn");
 const titleSettingsBgmToggleEl = document.getElementById("title-settings-bgm-toggle");
 const titleSettingsBgmStateEl = document.getElementById("title-settings-bgm-state");
+const titleSettingsMobileToggleEl = document.getElementById("title-settings-mobile-toggle");
+const titleSettingsMobileStateEl = document.getElementById("title-settings-mobile-state");
 const bgmAudioEl = document.getElementById("bgm-audio");
 
 let floatingLogDismissTimer = null;
@@ -775,7 +777,7 @@ const state = {
   tricksterJobMimicByCardId: {},
   strategistPlacedTurnIndex: null,
   unlockedSummonCardIds: new Set(),
-  titleSettings: { bgmEnabled: true },
+  titleSettings: { bgmEnabled: true, mobileLayoutEnabled: false },
 };
 
 init();
@@ -846,6 +848,7 @@ function hydrateSummonCardUnlocks() {
 function getDefaultTitleSettings() {
   return {
     bgmEnabled: true,
+    mobileLayoutEnabled: false,
   };
 }
 
@@ -859,6 +862,10 @@ function loadTitleSettings() {
     return {
       ...defaults,
       bgmEnabled: typeof parsed.bgmEnabled === "boolean" ? parsed.bgmEnabled : defaults.bgmEnabled,
+      mobileLayoutEnabled:
+        typeof parsed.mobileLayoutEnabled === "boolean"
+          ? parsed.mobileLayoutEnabled
+          : defaults.mobileLayoutEnabled,
     };
   } catch {
     return getDefaultTitleSettings();
@@ -873,6 +880,7 @@ function saveTitleSettings() {
 
 function hydrateTitleSettings() {
   state.titleSettings = loadTitleSettings();
+  applyTitleMobileLayoutSetting(state.titleSettings.mobileLayoutEnabled);
 }
 
 function isContinueCheckpointTurn(turn = state.turn, phase = state.phase) {
@@ -1059,12 +1067,22 @@ function startGameFromContinueSnapshot() {
 }
 
 function syncTitleSettingsView() {
-  if (!titleSettingsBgmToggleEl || !titleSettingsBgmStateEl) return;
   const bgmEnabled = Boolean(state.titleSettings?.bgmEnabled);
-  titleSettingsBgmToggleEl.classList.toggle("is-on", bgmEnabled);
-  titleSettingsBgmToggleEl.classList.toggle("is-off", !bgmEnabled);
-  titleSettingsBgmToggleEl.setAttribute("aria-pressed", String(bgmEnabled));
-  titleSettingsBgmStateEl.textContent = bgmEnabled ? "ON" : "OFF";
+  if (titleSettingsBgmToggleEl && titleSettingsBgmStateEl) {
+    titleSettingsBgmToggleEl.classList.toggle("is-on", bgmEnabled);
+    titleSettingsBgmToggleEl.classList.toggle("is-off", !bgmEnabled);
+    titleSettingsBgmToggleEl.setAttribute("aria-pressed", String(bgmEnabled));
+    titleSettingsBgmStateEl.textContent = bgmEnabled ? "ON" : "OFF";
+  }
+
+  const mobileLayoutEnabled = Boolean(state.titleSettings?.mobileLayoutEnabled);
+  if (titleSettingsMobileToggleEl && titleSettingsMobileStateEl) {
+    titleSettingsMobileToggleEl.classList.toggle("is-on", mobileLayoutEnabled);
+    titleSettingsMobileToggleEl.classList.toggle("is-off", !mobileLayoutEnabled);
+    titleSettingsMobileToggleEl.setAttribute("aria-pressed", String(mobileLayoutEnabled));
+    titleSettingsMobileStateEl.textContent = mobileLayoutEnabled ? "ON" : "OFF";
+  }
+  applyTitleMobileLayoutSetting(mobileLayoutEnabled);
 }
 
 function setTitleBgmEnabled(enabled, options = {}) {
@@ -1093,6 +1111,30 @@ function setTitleBgmEnabled(enabled, options = {}) {
 function toggleTitleBgmEnabled() {
   const current = Boolean(state.titleSettings?.bgmEnabled);
   setTitleBgmEnabled(!current);
+}
+
+function applyTitleMobileLayoutSetting(enabled = false) {
+  if (!document.body) return;
+  document.body.classList.toggle("mobile-layout", Boolean(enabled));
+}
+
+function setTitleMobileLayoutEnabled(enabled, options = {}) {
+  const { persist = true } = options;
+  const mobileLayoutEnabled = Boolean(enabled);
+  state.titleSettings = {
+    ...getDefaultTitleSettings(),
+    ...(state.titleSettings || {}),
+    mobileLayoutEnabled,
+  };
+  if (persist) {
+    saveTitleSettings();
+  }
+  syncTitleSettingsView();
+}
+
+function toggleTitleMobileLayoutEnabled() {
+  const current = Boolean(state.titleSettings?.mobileLayoutEnabled);
+  setTitleMobileLayoutEnabled(!current);
 }
 
 function unlockSummonCard(cardId) {
@@ -1419,6 +1461,13 @@ function setupTitleScreen() {
       event.preventDefault();
       event.stopPropagation();
       toggleTitleBgmEnabled();
+    });
+  }
+  if (titleSettingsMobileToggleEl) {
+    titleSettingsMobileToggleEl.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      toggleTitleMobileLayoutEnabled();
     });
   }
 
