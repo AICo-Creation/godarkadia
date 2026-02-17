@@ -136,7 +136,7 @@ const CHARACTERS = [
     job: "ウィザード",
     attribute: "火",
     race: "神聖人",
-    stats: { atk: 33, def: 44, mag: 79, spr: 72, spd: 61, luk: 68 },
+    stats: { atk: 33, def: 44, mag: 86, spr: 72, spd: 61, luk: 68 },
   },
   {
     id: "mirei",
@@ -390,7 +390,7 @@ const PLAYER_MORALE_MAX = 1000;
 const PLAYER_MORALE_INITIAL = 50;
 const PLAYER_MP_MAX = 500;
 const PLAYER_MP_INITIAL = 50;
-const PLAYER_MP_BASE_RECOVERY = 0;
+const PLAYER_MP_BASE_RECOVERY = 5;
 const PLAYER_MP_REAR_RECOVERY = 5;
 const PLAYER_MP_REAR_PRIEST_RECOVERY = 5;
 const PLAYER_MP_STRATEGIST_RECOVERY = 5;
@@ -416,7 +416,7 @@ const PLAYER_DRAW_SHUFFLE_TRICKSTER_DISCOUNT_RATE = 0.5;
 const PLAYER_MAGIC_ATTACK_DAMAGE_RATE = 2;
 const PLAYER_TURN3_MAGIC_HEAL_BOOST_RATE = 1.2;
 const PLAYER_ANCIENT_MAGIC_DAMAGE_RATE = 4;
-const PLAYER_MINSTREL_BACKLINE_MAGIC_RATE = 1.5;
+const PLAYER_MINSTREL_BACKLINE_MAGIC_RATE = 1.3;
 const PLAYER_MINSTREL_BACKLINE_SLOT_IDS = ["rear", "general", "strategist"];
 const PLAYER_SPELLBLADE_DAMAGE_RATE = 2;
 const PLAYER_BERSERKER_RAGE_BASE_DAMAGE = 500;
@@ -497,7 +497,7 @@ const PLAYER_ZEOLITE_LAST_STAND_RATE = 3;
 const PLAYER_VOLGRAM_ARIANA_WARRIOR_MORALE_RATE = 1.5;
 const PLAYER_ARIANA_ZEOLITE_HEAL_RATE = 1.5;
 const PLAYER_ARIANA_LION_REAR_ARCHER_RATE = 2;
-const PLAYER_LUNA_STAR_WISDOM_MP_RECOVERY = 30;
+const PLAYER_LUNA_STAR_WISDOM_MP_RECOVERY = 20;
 const PLAYER_AURUM_CHARACTER_ID = "aurum";
 const PLAYER_CERISE_CHARACTER_ID = "cerise";
 const PLAYER_JEFFREY_CHARACTER_ID = "jeffrey";
@@ -1268,6 +1268,19 @@ function setupTitleScreen() {
   syncTitleSettingsView();
   clearTitleSubnote();
   syncTitleContinueButtonState();
+
+  // While the start confirmation modal is open, only allow clicks inside the modal.
+  titleScreenEl.addEventListener(
+    "click",
+    (event) => {
+      if (!isTitleStartConfirmPanelOpen()) return;
+      const clickTarget = event.target instanceof Element ? event.target : null;
+      if (clickTarget && clickTarget.closest("#title-start-confirm-panel")) return;
+      event.preventDefault();
+      event.stopPropagation();
+    },
+    true
+  );
 
   titleScreenEl.addEventListener("click", () => {
     startBackgroundMusic();
@@ -2849,7 +2862,8 @@ function chooseMagicUsage(choice) {
 
   const healChoiceSelected =
     (mode === "heal" && (choice === "right" || choice === "third")) ||
-    (mode === "generalCommand" && choice === "third");
+    (mode === "generalCommand" &&
+      (choice === "third" || (choice === "fourth" && canUseHolyRearHeal(attacker))));
   const arianaZeoliteHealBoostActive = healChoiceSelected && canTriggerArianaZeoliteHealBoost(attacker);
   if (arianaZeoliteHealBoostActive && !pending.suppressArianaZeoliteHealPrompt) {
     addActivationLog("私があなたを癒す", "crit");
@@ -3132,17 +3146,25 @@ function chooseMagicUsage(choice) {
       renderAll();
     };
 
-    const runGeneralHealMagic = () => {
-      if (!tryConsumePlayerMp(PLAYER_MP_SPELL_COST)) {
+    const runGeneralHealMagic = (healMode = "normal") => {
+      const isHolyHeal = healMode === "holy";
+      const healLabel = isHolyHeal ? "神聖回復魔法" : "回復魔法";
+      const healCost = isHolyHeal ? PLAYER_MP_HOLY_HEAL_COST : PLAYER_MP_SPELL_COST;
+      const healEffectRate = isHolyHeal ? PLAYER_REAR_HOLY_HEAL_EFFECT_RATE : 1;
+
+      if (!tryConsumePlayerMp(healCost)) {
         addLog(
-          `MP不足(${state.mp}/${PLAYER_MP_MAX}): 回復魔法にはMP${PLAYER_MP_SPELL_COST}が必要なため通常攻撃に切替。`,
+          `MP不足(${state.mp}/${PLAYER_MP_MAX}): ${healLabel}にはMP${healCost}が必要なため通常攻撃に切替。`,
           "warn"
         );
         runGeneralPhysicalAttack();
         return;
       }
 
-      const healResult = resolveRearHeal(attacker, { holy: false, apply: true });
+      const healResult = resolveRearHeal(attacker, {
+        holy: isHolyHeal,
+        apply: !isHolyHeal,
+      });
       let healRateText = `${healResult.baseHealRate}`;
       if (healResult.priestBoostApplied) {
         healRateText += ` × ${PLAYER_REAR_HEAL_PRIEST_BOOST_RATE}`;
@@ -3150,19 +3172,40 @@ function chooseMagicUsage(choice) {
       if (healResult.thirdTurnMagicBoostApplied) {
         healRateText += ` × ${PLAYER_TURN3_MAGIC_HEAL_BOOST_RATE}`;
       }
+      if (healEffectRate > 1) {
+        healRateText += ` × ${healEffectRate}`;
+      }
       if (healResult.arianaZeoliteBoostApplied) {
         healRateText += ` × ${formatRateLabel(healResult.arianaZeoliteBoostRate)}`;
       }
+      const hpAfterHeal = isHolyHeal
+        ? Math.min(getPlayerMaxHp(), state.playerHp + healResult.healed)
+        : state.playerHp;
+      if (isHolyHeal) {
+        addActivationLog("聖なる力よ、全軍に癒しを・・・", "crit");
+      }
       addActivationLog(
-        `${getCurrentTurnLabel()} 大将指令: 回復魔法(MP${PLAYER_MP_SPELL_COST}) ${attacker.name} が` +
-          ` SPR ${attacker.stats.spr} × ${healRateText} でHPを${healResult.healed}回復。` +
+        `${getCurrentTurnLabel()} 大将指令: ${healLabel}(MP${healCost}) ${attacker.name} が` +
+          ` SPR ${attacker.stats.spr} × ${healRateText} で` +
+          ` ${healResult.healFromRate} + max(0, (SPR - ${PLAYER_REAR_HEAL_SPR_BONUS_BASE}) × ${PLAYER_REAR_HEAL_SPR_BONUS_RATE})` +
+          ` × ${healEffectRate} = +${healResult.sprBonus}。合計でHPを${healResult.healed}回復。` +
           `${healResult.arianaZeoliteBoostApplied ? ` （ゼオライト共鳴 x${formatRateLabel(healResult.arianaZeoliteBoostRate)}）` : ""}` +
-          ` 味方HP ${state.playerHp}/${getPlayerMaxHp()}.`,
-        "good"
+          ` 味方HP ${hpAfterHeal}/${getPlayerMaxHp()}.`,
+        isHolyHeal ? "crit" : "good"
       );
       addLog(`MP残量: ${state.mp}/${PLAYER_MP_MAX}`, "good");
-      showRearHealMagicEffect(attacker, { holy: false, healed: healResult.healed });
-      addLog("回復魔法ターンのため、このターンの味方攻撃は発生しません。", "warn");
+      if (isHolyHeal) {
+        queuePostActivationPlayerAction({
+          actionType: "holyRearHeal",
+          attacker,
+          slotId,
+          enemyIndex: state.enemyIndex,
+        });
+        renderAll();
+        return;
+      }
+      showRearHealMagicEffect(attacker, { holy: isHolyHeal, healed: healResult.healed });
+      addLog(`${healLabel}ターンのため、このターンの味方攻撃は発生しません。`, "warn");
       processEnemyCounterAfterPlayerAction(attacker, currentEnemy);
       renderAll();
     };
@@ -3212,10 +3255,14 @@ function chooseMagicUsage(choice) {
       return;
     }
     if (choice === "third") {
-      runGeneralHealMagic();
+      runGeneralHealMagic("normal");
       return;
     }
     if (choice === "fourth") {
+      if (canUseHolyRearHeal(attacker)) {
+        runGeneralHealMagic("holy");
+        return;
+      }
       runGeneralSpellbladeAttack();
       return;
     }
@@ -4272,15 +4319,19 @@ function getStrategistEnchantEffect(attacker) {
 
   const magExcess = Math.max(0, strategistCard.stats.mag - PLAYER_STRATEGIST_ENCHANT_MAG_BASE);
   const baseDamage = Math.max(0, Math.floor(magExcess * PLAYER_STRATEGIST_ENCHANT_DAMAGE_RATE));
+  const minstrelRate = Math.max(1, getBacklineMinstrelMagicSupportRate());
+  const afterMinstrelDamage = Math.max(0, Math.floor(baseDamage * minstrelRate));
   const magicKnightRate = hasJobTag(attacker, "マジックナイト")
     ? PLAYER_STRATEGIST_ENCHANT_MAGIC_KNIGHT_RATE
     : 1;
-  const damage = Math.max(0, Math.floor(baseDamage * magicKnightRate));
+  const damage = Math.max(0, Math.floor(afterMinstrelDamage * magicKnightRate));
   return {
     strategistName: strategistCard.name,
     strategistMag: strategistCard.stats.mag,
     magExcess,
     baseDamage,
+    minstrelRate,
+    afterMinstrelDamage,
     magicKnightRate,
     damage,
   };
@@ -4312,6 +4363,7 @@ function resolveStrategistEnchantAttack(attacker, slotId, currentEnemy, options 
       `${hitLabelText}: ${enchantEffect.strategistName}(MAG ${enchantEffect.strategistMag}) の魔装が` +
         ` ${attacker.name} の武器に付与。` +
         ` max(0, MAG-${PLAYER_STRATEGIST_ENCHANT_MAG_BASE}) x ${PLAYER_STRATEGIST_ENCHANT_DAMAGE_RATE}` +
+        `${enchantEffect.minstrelRate > 1 ? ` x ${formatRateLabel(enchantEffect.minstrelRate)}(吟遊詩人支援)` : ""}` +
         `${enchantEffect.magicKnightRate > 1 ? ` x ${formatRateLabel(enchantEffect.magicKnightRate)}` : ""}` +
         ` = ${enchantDamage} 追加ダメージ${enchantCutText}。敵HP ${nextEnemyHp}/${currentEnemy.hp}.`,
       enchantEffect.magicKnightRate > 1 ? "crit" : "good"
@@ -4326,6 +4378,8 @@ function resolveStrategistEnchantAttack(attacker, slotId, currentEnemy, options 
         strategistMag: enchantEffect.strategistMag,
         magExcess: enchantEffect.magExcess,
         enchantRate: PLAYER_STRATEGIST_ENCHANT_DAMAGE_RATE,
+        minstrelRate: enchantEffect.minstrelRate,
+        afterMinstrelDamage: enchantEffect.afterMinstrelDamage,
         magicKnightRate: enchantEffect.magicKnightRate,
         afterMagicKnightDamage: enchantEffect.damage,
         enemyDamageCutRate: enchantDamageCut.cutRate,
@@ -6278,7 +6332,7 @@ function getMpRecoveryForTurnEnd() {
     }
   }
 
-  if (strategistCard && isWizardLike(strategistCard)) {
+  if (strategistCard) {
     mpRecovery += PLAYER_MP_STRATEGIST_RECOVERY;
     if (isCharacterCard(strategistCard, PLAYER_NAMI_CHARACTER_ID)) {
       mpRecovery += PLAYER_NAMI_MP_RECOVERY_BONUS;
@@ -8145,8 +8199,13 @@ function buildPreAttackDamageSteps(finalDamage, breakdown = null) {
     const strategistMag = Math.max(0, Math.floor(breakdown.strategistMag ?? 0));
     const magExcess = Math.max(0, Math.floor(breakdown.magExcess ?? 0));
     const enchantRate = Math.max(1, Number(breakdown.enchantRate) || PLAYER_STRATEGIST_ENCHANT_DAMAGE_RATE);
+    const minstrelRate = Math.max(1, Number(breakdown.minstrelRate) || 1);
     const magicKnightRate = Math.max(1, Number(breakdown.magicKnightRate) || 1);
     const baseEnchantDamage = Math.max(0, Math.floor(magExcess * enchantRate));
+    const afterMinstrelDamage = Math.max(
+      0,
+      Math.floor(breakdown.afterMinstrelDamage ?? Math.floor(baseEnchantDamage * minstrelRate))
+    );
     const afterMagicKnightDamage = Math.max(0, Math.floor(breakdown.afterMagicKnightDamage ?? damage));
     const enemyDamageCutRate = Number(breakdown.enemyDamageCutRate ?? 1);
     const enemyDamageCutApplied = Boolean(breakdown.enemyDamageCutApplied && enemyDamageCutRate < 1);
@@ -8155,6 +8214,9 @@ function buildPreAttackDamageSteps(finalDamage, breakdown = null) {
     return [
       { label: `軍師MAG ${strategistMag}`, value: strategistMag },
       { label: `max(0, MAG-${PLAYER_STRATEGIST_ENCHANT_MAG_BASE}) x ${formatRateLabel(enchantRate)}`, value: baseEnchantDamage },
+      ...(minstrelRate > 1
+        ? [{ label: `吟遊詩人支援 x${formatRateLabel(minstrelRate)}`, value: afterMinstrelDamage }]
+        : []),
       ...(magicKnightRate > 1
         ? [{ label: `マジックナイト補正 x${formatRateLabel(magicKnightRate)}`, value: afterMagicKnightDamage }]
         : []),
@@ -8976,24 +9038,40 @@ function renderGuardChoice() {
 
     if (mode === "generalCommand") {
       const spellbladeAvailable = canUseGeneralCommandSpellblade(attacker);
+      const holyHealConditionMet = canUseHolyRearHeal(attacker);
+      const holyHealMpEnough = state.mp >= PLAYER_MP_HOLY_HEAL_COST;
+      const holyHealAvailable = holyHealConditionMet && holyHealMpEnough;
+      const holyHealDisabledReason = !holyHealConditionMet
+        ? `${attacker.name} は神聖回復魔法の条件未達です（フェーズ内${PLAYER_REAR_HOLY_HEAL_AVAILABLE_TURN}ターン目以降 / プリースト / SPR${PLAYER_REAR_HOLY_HEAL_TRIGGER_SPR}以上）。`
+        : !holyHealMpEnough
+          ? `神聖回復魔法はMP不足です（現在MP ${state.mp}/${PLAYER_MP_MAX} / 必要MP ${PLAYER_MP_HOLY_HEAL_COST}）。`
+          : "";
+      const fourthAction = holyHealConditionMet ? "holyHeal" : spellbladeAvailable ? "spellblade" : null;
       if (guardChoiceTitleEl) {
         guardChoiceTitleEl.textContent = "大将指令";
       }
       guardChoiceTextEl.textContent = `${attacker.name} の行動を選択してください。`;
-      guardChoiceHintEl.textContent = "";
-      guardChoiceHintEl.hidden = true;
+      guardChoiceHintEl.textContent =
+        `現在MP: ${state.mp}/${PLAYER_MP_MAX} / 回復魔法(MP${PLAYER_MP_SPELL_COST})` +
+        (holyHealConditionMet ? ` / 神聖回復魔法(MP${PLAYER_MP_HOLY_HEAL_COST})` : "") +
+        (spellbladeAvailable ? ` / 神聖魔法剣(MP${PLAYER_MP_SPELLBLADE_COST})` : "");
+      guardChoiceHintEl.hidden = false;
       guardPhysicalBtn.textContent = "物理攻撃";
       guardMagicBtn.textContent = "魔法攻撃";
       if (guardAncientBtn) {
         guardAncientBtn.textContent = "回復魔法";
       }
       if (guardFourthBtn) {
-        guardFourthBtn.textContent = "神聖魔法剣";
+        guardFourthBtn.textContent = fourthAction === "holyHeal" ? "神聖回復魔法" : "神聖魔法剣";
       }
       setChoiceButtonState(guardAncientBtn, { hidden: false, disabled: false });
-      setChoiceButtonState(guardFourthBtn, { hidden: !spellbladeAvailable });
+      setChoiceButtonState(guardFourthBtn, {
+        hidden: !fourthAction,
+        disabled: fourthAction === "holyHeal" ? !holyHealAvailable : false,
+        reason: fourthAction === "holyHeal" ? holyHealDisabledReason : "",
+      });
       if (guardChoiceButtonsEl) {
-        if (spellbladeAvailable) {
+        if (fourthAction) {
           guardChoiceButtonsEl.classList.add("mode-four");
           guardChoiceButtonsEl.classList.remove("mode-three");
         } else {
