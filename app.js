@@ -1118,6 +1118,10 @@ function applyTitleMobileLayoutSetting(enabled = false) {
   document.body.classList.toggle("mobile-layout", Boolean(enabled));
 }
 
+function isMobileLayoutEnabled() {
+  return Boolean(document.body && document.body.classList.contains("mobile-layout"));
+}
+
 function setTitleMobileLayoutEnabled(enabled, options = {}) {
   const { persist = true } = options;
   const mobileLayoutEnabled = Boolean(enabled);
@@ -7145,7 +7149,7 @@ function playAttackEffectVisual({
     const targetRect = targetEl.getBoundingClientRect();
     if (!sourceRect.width || !targetRect.width) return;
 
-    const mobileLayoutEnabled = Boolean(document.body && document.body.classList.contains("mobile-layout"));
+    const mobileLayoutEnabled = isMobileLayoutEnabled();
     const startX = sourceRect.left + sourceRect.width / 2;
     const startY = sourceRect.top + sourceRect.height / 2;
     const endX = targetRect.left + targetRect.width / 2;
@@ -7334,10 +7338,16 @@ function playAttackEffectVisual({
   }
 
   const runAfterScrollIfNeeded = () => {
+    const mobileLayoutEnabled = isMobileLayoutEnabled();
     const scrolled =
       autoScroll && targetEl && scrollAttackTargetIntoViewIfNeeded(targetEl);
     if (scrolled) {
-      window.setTimeout(runEffect, ATTACK_AUTO_SCROLL_START_DELAY_MS);
+      const attackScrollDelayMs = mobileLayoutEnabled ? 0 : ATTACK_AUTO_SCROLL_START_DELAY_MS;
+      if (attackScrollDelayMs > 0) {
+        window.setTimeout(runEffect, attackScrollDelayMs);
+      } else {
+        runEffect();
+      }
     } else {
       runEffect();
     }
@@ -7373,8 +7383,9 @@ function scrollAttackTargetIntoViewIfNeeded(targetEl) {
 
   if (isWithinVerticalViewport) return false;
 
+  const mobileLayoutEnabled = isMobileLayoutEnabled();
   targetEl.scrollIntoView({
-    behavior: "smooth",
+    behavior: mobileLayoutEnabled ? "auto" : "smooth",
     block: "center",
     inline: "nearest",
   });
