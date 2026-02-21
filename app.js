@@ -346,7 +346,7 @@ const ENEMY_ROSTER = [
     id: "chaos_destroyer",
     name: "カオスデストロイヤー",
     subtitle: "属性: 闇 / 最終ボス",
-    hp: 10000,
+    hp: 15000,
     stats: { atk: 165, def: 58, mag: 158, spr: 54, spd: 78, luk: 70 },
   },
 ];
