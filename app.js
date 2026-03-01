@@ -3489,7 +3489,12 @@ function resolvePendingPostActivationPlayerAction() {
   if (pendingAction.actionType === "holyRearHeal") {
     const { attacker, slotId, enemyIndex } = pendingAction;
     const currentEnemy = getCurrentEnemy();
-    if (!attacker || slotId !== "rear" || !currentEnemy || enemyIndex !== state.enemyIndex) {
+    if (
+      !attacker ||
+      (slotId !== "rear" && slotId !== "general") ||
+      !currentEnemy ||
+      enemyIndex !== state.enemyIndex
+    ) {
       return false;
     }
 
