@@ -6068,10 +6068,8 @@ function isBoardFull() {
 
 function queueBoardRecycleAfterEnemyHit() {
   if (!isBoardFull()) return;
-  if (state.pendingBoardRecycle) return;
-
-  state.pendingBoardRecycle = true;
-  addLog("敵の攻撃後、画面クリックで陣形を再編します。", "warn");
+  state.pendingBoardRecycle = false;
+  recycleBoardCardsToDeckIfFull();
 }
 
 function canTriggerEnemyAmbushAssault() {
